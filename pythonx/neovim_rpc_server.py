@@ -9,6 +9,7 @@ import vim
 import logging
 import msgpack
 import neovim_rpc_server_api_info
+import neovim_rpc_methods
 import threading
 import socket
 import time
@@ -123,7 +124,7 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
                 MainChannelHandler._sock = self.request
 
                 # initial setup
-                encoded = json.dumps(['ex', "call neovim_rpc#_callback()"])
+                encoded = json.dumps(['ex', "scall neovim_rpc#_callback()"])
                 logger.info("sending {0}".format(encoded))
                 self.request.sendall(encoded.encode('utf-8'))
 
@@ -206,7 +207,15 @@ def process_pending_requests():
             #   msg[3] arguments
             req_typed, req_id, method, args = msg
 
-            result = _process_request(channel,method,args)
+            try:
+                result = _process_request(channel,method,args)
+            except Exception as ex:
+                logger.exception("process failed: %s", ex)
+
+                packed = msgpack.packb([1,req_id,[1,str(ex)],None])
+                logger.info("sending result: %s", packed)
+                sock.send(packed)
+                continue
 
             # response format:
             #   - msg[0]: msgtype, 0 request, 1 response, 2 notification
@@ -214,17 +223,27 @@ def process_pending_requests():
             #   - msg[2]: error(if any)
             #   - msg[3]: result(if not errored)
 
-            sock.send(msgpack.packb([1,req_id,None,result]))
+            packed = msgpack.packb([1,req_id,None,result])
+            logger.info("sending result: %s", packed)
+            sock.send(packed)
 
         q.task_done()
 
-
+# vim's python binding doesn't have the `call` method, wrap it here
+def call_vimfunc(method,*args):
+    vim.vars['_neovim_rpc_tmp_args'] = args
+    return vim.eval('call("%s",g:_neovim_rpc_tmp_args)' % method)
 
 def _process_request(channel,method,args):
     if method=='vim_get_api_info':
         # this is the first request send from neovim client
         api_info = neovim_rpc_server_api_info.API_INFO
         return [channel,api_info]
+    if hasattr(neovim_rpc_methods,method):
+        return getattr(neovim_rpc_methods,method)(*args)
+    else:
+        logger.error("method %s not implemented", method)
+        raise Exception('%s not implemented' % method)
 
 def stop():
 
