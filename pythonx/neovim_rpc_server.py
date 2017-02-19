@@ -30,9 +30,13 @@ except ImportError:
     # Python 2
     import SocketServer as socketserver
 
+def channel_id_new():
+    channel_id_new._counter += 1
+    return channel_id_new._counter
+channel_id_new._counter = 0
+
 class NvimClientHandler(socketserver.BaseRequestHandler):
 
-    channel_id_inc = 0
     channel_sockets = {}
 
     request_queue = Queue()
@@ -45,8 +49,7 @@ class NvimClientHandler(socketserver.BaseRequestHandler):
         logger.info("=== socket opened for client ===")
 
         with NvimClientHandler._lock:
-            NvimClientHandler.channel_id_inc += 1
-            channel = NvimClientHandler.channel_id_inc
+            channel = channel_id_new()
 
         sock = self.request
         NvimClientHandler.channel_sockets[channel] = sock
@@ -76,6 +79,17 @@ class NvimClientHandler(socketserver.BaseRequestHandler):
                 sock.close()
             except:
                 pass
+
+class JobChannelHandler(threading.Thread):
+
+    def __init__(proc):
+        self._proc = proc
+
+    def run():
+        pass
+
+    def shutdown():
+        pass
 
 class MainChannelHandler(socketserver.BaseRequestHandler):
 
@@ -266,6 +280,10 @@ def _process_request(channel,method,args):
     else:
         logger.error("method %s not implemented", method)
         raise Exception('%s not implemented' % method)
+
+def jobstart():
+    channel = channel_id_new()
+    return channel
 
 def stop():
 
