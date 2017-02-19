@@ -232,8 +232,9 @@ def process_pending_requests():
                     sock.send(packed)
                     continue
 
-                packed = msgpack.packb([1,req_id,None,result])
-                logger.info("sending result: %s", packed)
+                result = [1,req_id,None,result]
+                logger.info("sending result: %s", result)
+                packed = msgpack.packb(result)
                 sock.send(packed)
 
             if msg[0] == 2:
