@@ -1,9 +1,10 @@
 
 # vim-hug-neovim-rpc
 
-This is an experimental project. I started this project because I want to fix
-the [vim8 support](https://github.com/roxma/nvim-completion-manager/issues/14)
-issue for
+This is an experimental project, trying to build a compatible layer for
+[neovim rpc client](https://github.com/neovim/python-client) working on vim8.
+I started this project because I want to fix the [vim8
+support](https://github.com/roxma/nvim-completion-manager/issues/14) issue for
 [nvim-completion-manager](https://github.com/roxma/nvim-completion-manager).
 
 Since this is a general perpurse module, other plugins needing rpc support may
