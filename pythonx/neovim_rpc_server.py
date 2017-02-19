@@ -149,13 +149,35 @@ class NvimClientHandler(socketserver.BaseRequestHandler):
             except:
                 pass
 
+    @classmethod
+    def notify(cls,channel,event,args):
+        pass
+
+    @classmethod
+    def shutdown(cls):
+        # close all sockets
+        for channel in cls.channel_sockets:
+            sock = cls.channel_sockets.get(channel,None)
+            if sock:
+                logger.info("closing client %s", channel)
+                # if don't shutdown the socket, vim will never exit because the
+                # recv thread is still blocking
+                sock.shutdown(socket.SHUT_RDWR)
+                sock.close()
+
 
 class JobChannelHandler(threading.Thread):
 
+    channel_procs = {}
+
     def __init__(self,proc,channel):
+        channel = int(channel)
         self._proc = proc
         self._channel = channel
         threading.Thread.__init__(self)
+
+        JobChannelHandler.channel_procs[channel] = proc
+
 
     def run(self):
         try:
@@ -177,9 +199,32 @@ class JobChannelHandler(threading.Thread):
 
         except Exception as ex:
             logger.exception("failed for channel %s, %s", self._channel, ex)
+        finally:
+            try:
+                JobChannelHandler.channel_procs.pop(self._channel)
+            except:
+                pass
 
-    def shutdown(self):
-        pass
+    @classmethod
+    def notify(cls,channel,event,args):
+        try:
+            channel = int(channel)
+            if channel not in cls.channel_procs:
+                logger.info("channel[%s] not in JobChannelHandler", channel)
+                return
+            proc = cls.channel_procs[channel]
+            content = [2, event, args]
+            logger.info("notify channel[%s]: %s", channel, content)
+            packed = msgpack.packb(content)
+            proc.stdin.write(packed)
+        except Exception as ex:
+            logger.exception("notify failed: %s", ex)
+
+    @classmethod
+    def shutdown(cls):
+        for channel in cls.channel_procs:
+            logger.info('killing channel [%s]',channel)
+            cls.channel_procs[channel].kill()
 
 
 # copied from neovim python-client/neovim/__init__.py
@@ -314,31 +359,32 @@ def _process_request(channel,method,args):
 
 def jobstart():
     channel = _channel_id_new()
-    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_cmd'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL)
+    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_args'][0], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL)
     handler = JobChannelHandler(proc,channel)
     handler.start()
-    vim.vars['_neovim_rpc_tmp_ret'] = channel
     logger.info("jobstart for %s", channel)
+    vim.vars['_neovim_rpc_tmp_ret'] = channel
     return channel
+
+def rpcnotify():
+    args = vim.vars['_neovim_rpc_tmp_args']
+    channel, method, args = args 
+    args = json.loads(vim.eval('json_encode(a:000)'))
+    JobChannelHandler.notify(channel,method,args)
 
 
 def stop():
 
     logger.info("stopping")
+
     _server_main.shutdown()
     _server_main.server_close()
     _server_clients.shutdown()
     _server_clients.server_close()
 
-    # close all clients
-    for channel in NvimClientHandler.channel_sockets:
-        sock = NvimClientHandler.channel_sockets.get(channel,None)
-        if sock:
-            logger.info("closing client %s", channel)
-            # if don't shutdown the socket, vim will never exit because the
-            # recv thread is still blocking
-            sock.shutdown(socket.SHUT_RDWR)
-            sock.close()
+    # remove all sockets
+    NvimClientHandler.shutdown()
+    JobChannelHandler.shutdown()
 
     logger.info("shutdown finished")
 

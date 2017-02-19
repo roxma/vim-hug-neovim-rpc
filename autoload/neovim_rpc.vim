@@ -34,8 +34,7 @@ func! neovim_rpc#jobstart(cmd,opts)
 	" init
 	call neovim_rpc#serveraddr()
 
-	let g:_neovim_rpc_tmp_cmd  = a:cmd
-	let g:_neovim_rpc_tmp_opts = a:cmd
+	let g:_neovim_rpc_tmp_args  = [a:cmd,a:opts]
 	execute s:py_cmd 'neovim_rpc_server.jobstart()'
 	if g:_neovim_rpc_tmp_ret>0
 		" g:_neovim_rpc_tmp_ret is the jobid
@@ -43,6 +42,12 @@ func! neovim_rpc#jobstart(cmd,opts)
 		let g:_nvim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
 	endif
 	return g:_neovim_rpc_tmp_ret
+endfunc
+
+func! neovim_rpc#rpcnotify(channel,event,...)
+	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
+	execute s:py_cmd 'neovim_rpc_server.rpcnotify()'
+	" a:000
 endfunc
 
 func! neovim_rpc#_callback()
