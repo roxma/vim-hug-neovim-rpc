@@ -15,6 +15,13 @@ import socket
 import time
 import subprocess
 
+# protable devnull
+if sys.version_info.major==2:
+    DEVNULL = open(os.devnull, 'wb')
+else:
+    from subprocess import DEVNULL
+
+
 if sys.version_info.major == 2:
     from Queue import Queue
 else:
@@ -307,7 +314,7 @@ def _process_request(channel,method,args):
 
 def jobstart():
     channel = _channel_id_new()
-    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_cmd'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_cmd'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL)
     handler = JobChannelHandler(proc,channel)
     handler.start()
     vim.vars['_neovim_rpc_tmp_ret'] = channel
