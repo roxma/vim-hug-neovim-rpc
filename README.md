@@ -10,7 +10,7 @@ support](https://github.com/roxma/nvim-completion-manager/issues/14) issue for
 Since this is a general perpurse module, other plugins needing rpc support may
 benefits from this project. However, there're many neovim rpc methods I havn't
 implemented yet, which make this an experimental plugin. Please fork and open
-a PR if you get ideas on improvement.
+a PR if you get any idea on improving it.
 
 ![screencast](https://cloud.githubusercontent.com/assets/4538941/23102626/9e1bd928-f6e7-11e6-8fa2-2776f70819d9.gif)
 
