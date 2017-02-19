@@ -23,6 +23,14 @@ def nvim_set_var(name,val):
     vim.vars[name] = val
     return val
 
+def nvim_buf_get_var(buffer,name):
+    buffer = msgpack.unpackb(buffer.data)
+    return vim.buffers[buffer].vars[name]
+
+def nvim_buf_set_var(buffer,name,val):
+    buffer = msgpack.unpackb(buffer.data)
+    vim.buffers[buffer].vars[name] = val
+
 def nvim_buf_get_lines(buffer,start,end,*args):
 
     buffer = msgpack.unpackb(buffer.data)
