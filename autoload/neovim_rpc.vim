@@ -21,7 +21,7 @@ func! neovim_rpc#serveraddr()
 	let g:_nvim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  call ch_close(g:_nvim_rpc_main_channel) | execute s:py_cmd 'neovim_rpc_server.stop()'
+	au VimLeavePre *  call ch_close(g:_nvim_rpc_main_channel) | execute s:py_cmd 'neovim_rpc_server.stop()' | call timer_start(2000,'neovim_rpc#_jobkillall')
 
 	" identify myself
 	call ch_sendexpr(g:_nvim_rpc_main_channel,'neovim_rpc_setup')
@@ -52,5 +52,11 @@ endfunc
 
 func! neovim_rpc#_callback()
 	execute s:py_cmd 'neovim_rpc_server.process_pending_requests()'
+endfunc
+
+" getting out of patience
+" kill them all
+func! neovim_rpc#_jobkillall(...)
+	execute s:py_cmd 'neovim_rpc_server.jobkillall()'
 endfunc
 

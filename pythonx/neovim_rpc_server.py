@@ -180,8 +180,12 @@ class JobChannelHandler(threading.Thread):
 
 
     def run(self):
+
+        channel = self._channel
+        proc = self._proc
         try:
-            logger.info("reading for job: %s", self._channel)
+
+            logger.info("reading for job: %s", channel)
 
             class HackStdout():
                 def __init__(self,o):
@@ -189,20 +193,29 @@ class JobChannelHandler(threading.Thread):
                 def read(self,cnt):
                     return self._stdout.read(1)
 
-            unpacker = msgpack.Unpacker(HackStdout(self._proc.stdout))
+            unpacker = msgpack.Unpacker(HackStdout(proc.stdout))
             for unpacked in unpacker:
                 logger.info("unpacked: %s", unpacked)
-                request_queue.put((self._proc.stdin, self._channel, unpacked))
+                request_queue.put((proc.stdin, channel, unpacked))
                 # notify vim in order to process request in main thread, and
                 # avoiding the stupid json protocol
                 MainChannelHandler.notify()
 
+            # wait for terminating
+            logger.exception("channel [%s] has terminated", channel)
+
         except Exception as ex:
-            logger.exception("failed for channel %s, %s", self._channel, ex)
+            logger.exception("failed for channel %s, %s", channel)
         finally:
             try:
-                JobChannelHandler.channel_procs.pop(self._channel)
-            except:
+                # remove it from registration
+                JobChannelHandler.channel_procs.pop(channel)
+                if not proc.poll():
+                    # kill it 
+                    logger.exception("killing channel[%s] in finally block", channel)
+                    proc.kill()
+            except Exception as ex:
+                logger.exception("exception during finally block for job channel %s: %s", channel,ex)
                 pass
 
     @classmethod
@@ -223,8 +236,22 @@ class JobChannelHandler(threading.Thread):
     @classmethod
     def shutdown(cls):
         for channel in cls.channel_procs:
+            logger.info('terminating channel [%s]',channel)
+            try:
+                cls.channel_procs[channel].terminate()
+            except Exception as ex:
+                logger.info('send terminate signal failed for channel [%s]: %s',channel, ex)
+
+    @classmethod
+    def killall(cls):
+        logger.info('killall jobs')
+        for channel in cls.channel_procs:
             logger.info('killing channel [%s]',channel)
-            cls.channel_procs[channel].kill()
+            try:
+                cls.channel_procs[channel].kill()
+            except Exception as ex:
+                logger.info('kill failed for channel [%s]: %s',channel, ex)
+
 
 
 # copied from neovim python-client/neovim/__init__.py
@@ -281,14 +308,10 @@ def process_pending_requests():
     logger.info("process_pending_requests")
     while True:
 
+        item = None
         try:
 
-            # non blocking
-            try:
-                item = request_queue.get(False)
-            except Exception as ex:
-                logger.info('queue is empty: %s', ex)
-                break
+            item = request_queue.get(False)
 
             f, channel, msg = item
 
@@ -333,18 +356,20 @@ def process_pending_requests():
 
             if msg[0] == 2:
                 # notification
-
                 req_typed, method, args = msg
-
                 try:
                     result = _process_request(channel,method,args)
                     logger.info('notification process result: [%s]', result)
                 except Exception as ex:
                     logger.exception("process failed: %s", ex)
-
+        except Exception as ex:
+            logger.exception("exception during process: %s", ex)
         finally:
-
-            q.task_done()
+            if item:
+                request_queue.task_done()
+            else:
+                # item==None means the queue is empty
+                break
 
 def _process_request(channel,method,args):
     if method=='vim_get_api_info':
@@ -387,4 +412,8 @@ def stop():
     JobChannelHandler.shutdown()
 
     logger.info("shutdown finished")
+
+def jobkillall():
+    JobChannelHandler.killall()
+
 
