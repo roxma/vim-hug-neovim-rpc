@@ -13,6 +13,7 @@ import neovim_rpc_methods
 import threading
 import socket
 import time
+import subprocess
 
 if sys.version_info.major == 2:
     from Queue import Queue
@@ -21,8 +22,6 @@ else:
 
 # NVIM_PYTHON_LOG_FILE=nvim.log NVIM_PYTHON_LOG_LEVEL=INFO vim test.md
 
-logger = logging.getLogger(__name__)
-
 try:
     # Python 3
     import socketserver
@@ -30,77 +29,27 @@ except ImportError:
     # Python 2
     import SocketServer as socketserver
 
-def channel_id_new():
-    channel_id_new._counter += 1
-    return channel_id_new._counter
-channel_id_new._counter = 0
-
-class NvimClientHandler(socketserver.BaseRequestHandler):
-
-    channel_sockets = {}
-
-    request_queue = Queue()
-
-    _lock = threading.Lock()
+# globals
+logger = logging.getLogger(__name__)
+request_queue = Queue()
 
 
-    def handle(self):
+def _channel_id_new():
+    with _channel_id_new._lock:
+        _channel_id_new._counter += 1
+        return _channel_id_new._counter
+# static local
+_channel_id_new._counter = 0
+_channel_id_new._lock = threading.Lock()
 
-        logger.info("=== socket opened for client ===")
-
-        with NvimClientHandler._lock:
-            channel = channel_id_new()
-
-        sock = self.request
-        NvimClientHandler.channel_sockets[channel] = sock
-
-        try:
-            class HackSocket():
-                def read(self,cnt):
-                    if cnt>4096:
-                        cnt = 4096
-                    return sock.recv(cnt)
-            hack = HackSocket()
-            unpacker = msgpack.Unpacker(hack)
-            for unpacked in unpacker:
-                logger.info("unpacked: %s", unpacked)
-                NvimClientHandler.request_queue.put((sock,channel,unpacked))
-                # notify vim in order to process request in main thread, and
-                # avoiding the stupid json protocol
-                MainChannelHandler.notify()
-
-            logger.info('channel %s closed.', channel)
-
-        except:
-            logger.exception('unpacker failed.')
-        finally:
-            try:
-                NvimClientHandler.channel_sockets.pop(channel)
-                sock.close()
-            except:
-                pass
-
-class JobChannelHandler(threading.Thread):
-
-    def __init__(proc):
-        self._proc = proc
-
-    def run():
-        pass
-
-    def shutdown():
-        pass
 
 class MainChannelHandler(socketserver.BaseRequestHandler):
 
     _lock = threading.Lock()
     _sock = None
-    _number = 0
 
     @classmethod
     def notify(cls):
-        MainChannelHandler._number += 1
-        num = MainChannelHandler._number
         if not MainChannelHandler._sock:
             return
         with MainChannelHandler._lock:
@@ -146,12 +95,88 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
 
                 logger.error('unrecognized request, %s', decoded)
 
+class SocketToStream():
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    pass
+    def __init__(self,sock):
+        self._sock = sock
+
+    def read(self,cnt):
+        if cnt>4096:
+            cnt = 4096
+        return self._sock.recv(cnt)
+
+    def write(self,w):
+        return self._sock.send(w)
+
+class NvimClientHandler(socketserver.BaseRequestHandler):
+
+    channel_sockets = {}
+
+    def handle(self):
+
+        logger.info("=== socket opened for client ===")
+
+        channel = _channel_id_new()
+
+        sock = self.request
+        NvimClientHandler.channel_sockets[channel] = sock
+
+        try:
+            f = SocketToStream(sock)
+            unpacker = msgpack.Unpacker(f)
+            for unpacked in unpacker:
+                logger.info("unpacked: %s", unpacked)
+                request_queue.put((f,channel,unpacked))
+                # notify vim in order to process request in main thread, and
+                # avoiding the stupid json protocol
+                MainChannelHandler.notify()
+
+            logger.info('channel %s closed.', channel)
+
+        except:
+            logger.exception('unpacker failed.')
+        finally:
+            try:
+                NvimClientHandler.channel_sockets.pop(channel)
+                sock.close()
+            except:
+                pass
+
+
+class JobChannelHandler(threading.Thread):
+
+    def __init__(self,proc,channel):
+        self._proc = proc
+        self._channel = channel
+        threading.Thread.__init__(self)
+
+    def run(self):
+        try:
+            logger.info("reading for job: %s", self._channel)
+
+            class HackStdout():
+                def __init__(self,o):
+                    self._stdout = o
+                def read(self,cnt):
+                    return self._stdout.read(1)
+
+            unpacker = msgpack.Unpacker(HackStdout(self._proc.stdout))
+            for unpacked in unpacker:
+                logger.info("unpacked: %s", unpacked)
+                request_queue.put((self._proc.stdin, self._channel, unpacked))
+                # notify vim in order to process request in main thread, and
+                # avoiding the stupid json protocol
+                MainChannelHandler.notify()
+
+        except Exception as ex:
+            logger.exception("failed for channel %s, %s", self._channel, ex)
+
+    def shutdown(self):
+        pass
+
 
 # copied from neovim python-client/neovim/__init__.py
-def setup_logging(name):
+def _setup_logging(name):
     """Setup logging according to environment variables."""
     logger = logging.getLogger(__name__)
     if 'NVIM_PYTHON_LOG_FILE' in os.environ:
@@ -174,7 +199,10 @@ def setup_logging(name):
 
 def start():
 
-    setup_logging('neovim_rpc_server')
+    _setup_logging('neovim_rpc_server')
+
+    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        pass
 
     # 0 for random port
     global _server_main
@@ -199,18 +227,18 @@ def start():
 def process_pending_requests():
 
     logger.info("process_pending_requests")
-    q = NvimClientHandler.request_queue
     while True:
 
         try:
+
             # non blocking
             try:
-                item = q.get(False)
+                item = request_queue.get(False)
             except Exception as ex:
                 logger.info('queue is empty: %s', ex)
                 break
 
-            sock, channel, msg = item
+            f, channel, msg = item
 
             logger.info("get msg from channel [%s]: %s", channel, msg)
 
@@ -243,16 +271,17 @@ def process_pending_requests():
                     # error uccor
                     packed = msgpack.packb([1, req_id, [1,str(ex)], None])
                     logger.info("sending result: %s", packed)
-                    sock.send(packed)
+                    f.write(packed)
                     continue
 
                 result = [1,req_id,None,result]
                 logger.info("sending result: %s", result)
                 packed = msgpack.packb(result)
-                sock.send(packed)
+                f.write(packed)
 
             if msg[0] == 2:
                 # notification
+
                 req_typed, method, args = msg
 
                 try:
@@ -264,11 +293,6 @@ def process_pending_requests():
         finally:
 
             q.task_done()
-
-# vim's python binding doesn't have the `call` method, wrap it here
-def call_vimfunc(method,*args):
-    vim.vars['_neovim_rpc_tmp_args'] = args
-    return vim.eval('call("%s",g:_neovim_rpc_tmp_args)' % method)
 
 def _process_request(channel,method,args):
     if method=='vim_get_api_info':
@@ -282,8 +306,14 @@ def _process_request(channel,method,args):
         raise Exception('%s not implemented' % method)
 
 def jobstart():
-    channel = channel_id_new()
+    channel = _channel_id_new()
+    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_cmd'], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    handler = JobChannelHandler(proc,channel)
+    handler.start()
+    vim.vars['_neovim_rpc_tmp_ret'] = channel
+    logger.info("jobstart for %s", channel)
     return channel
+
 
 def stop():
 

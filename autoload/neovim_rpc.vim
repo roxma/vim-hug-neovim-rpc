@@ -30,6 +30,10 @@ func! neovim_rpc#serveraddr()
 endfunc
 
 func! neovim_rpc#jobstart(cmd,opts)
+
+	" init
+	call neovim_rpc#serveraddr()
+
 	let g:_neovim_rpc_tmp_cmd  = a:cmd
 	let g:_neovim_rpc_tmp_opts = a:cmd
 	execute s:py_cmd 'neovim_rpc_server.jobstart()'
