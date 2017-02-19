@@ -37,4 +37,6 @@ def nvim_buf_get_lines(buffer,start,end,*args):
         end = end+1
     return call_vimfunc('getbufline',buffer,start,end)
 
+def nvim_eval(expr):
+    return vim.eval(expr)
 

@@ -188,46 +188,67 @@ def process_pending_requests():
     q = NvimClientHandler.request_queue
     while True:
 
-        # non blocking
         try:
-            item = q.get(False)
-        except Exception as ex:
-            logger.info('queue is empty: %s', ex)
-            break
-
-        sock, channel, msg = item
-
-        logger.info("get msg from channel [%s]: %s", channel, msg)
-        if msg[0] == 0:
-
-            # msg format: 
-            #   msg[0] type
-            #   msg[1] request id
-            #   msg[2] method
-            #   msg[3] arguments
-            req_typed, req_id, method, args = msg
-
+            # non blocking
             try:
-                result = _process_request(channel,method,args)
+                item = q.get(False)
             except Exception as ex:
-                logger.exception("process failed: %s", ex)
+                logger.info('queue is empty: %s', ex)
+                break
 
-                packed = msgpack.packb([1,req_id,[1,str(ex)],None])
-                logger.info("sending result: %s", packed)
-                sock.send(packed)
-                continue
+            sock, channel, msg = item
+
+            logger.info("get msg from channel [%s]: %s", channel, msg)
+
+            # request format:
+            #   - msg[0] type, which is 0
+            #   - msg[1] request id
+            #   - msg[2] method
+            #   - msg[3] arguments
+
+            # notification format:
+            #   - msg[0] type, which is 0
+            #   - msg[1] method
+            #   - msg[2] arguments
 
             # response format:
-            #   - msg[0]: msgtype, 0 request, 1 response, 2 notification
-            #   - msg[1]: the id
-            #   - msg[2]: error(if any)
+            #   - msg[0]: 1
+            #   - msg[1]: the request id
+            #   - msg[2]: error(if any), format: [code,str]
             #   - msg[3]: result(if not errored)
 
-            packed = msgpack.packb([1,req_id,None,result])
-            logger.info("sending result: %s", packed)
-            sock.send(packed)
+            if msg[0] == 0:
+                #request
 
-        q.task_done()
+                req_typed, req_id, method, args = msg
+
+                try:
+                    result = _process_request(channel,method,args)
+                except Exception as ex:
+                    logger.exception("process failed: %s", ex)
+                    # error uccor
+                    packed = msgpack.packb([1, req_id, [1,str(ex)], None])
+                    logger.info("sending result: %s", packed)
+                    sock.send(packed)
+                    continue
+
+                packed = msgpack.packb([1,req_id,None,result])
+                logger.info("sending result: %s", packed)
+                sock.send(packed)
+
+            if msg[0] == 2:
+                # notification
+                req_typed, method, args = msg
+
+                try:
+                    result = _process_request(channel,method,args)
+                    logger.info('notification process result: [%s]', result)
+                except Exception as ex:
+                    logger.exception("process failed: %s", ex)
+
+        finally:
+
+            q.task_done()
 
 # vim's python binding doesn't have the `call` method, wrap it here
 def call_vimfunc(method,*args):
