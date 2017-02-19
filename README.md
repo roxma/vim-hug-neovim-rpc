@@ -14,4 +14,10 @@ open a PR if you get any idea on improving it**.
 
 ![screencast](https://cloud.githubusercontent.com/assets/4538941/23102626/9e1bd928-f6e7-11e6-8fa2-2776f70819d9.gif)
 
+## Requirements
+
+- vim8 with `has('python')` or `has('python3')`
+- installation of
+  [msgpack-python](https://pypi.python.org/pypi/msgpack-python). (`pip install
+  msgpack-python`)
 
