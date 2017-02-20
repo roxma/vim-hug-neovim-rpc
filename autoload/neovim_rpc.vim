@@ -7,13 +7,13 @@ func! neovim_rpc#serveraddr()
 	execute s:py_cmd 'import neovim_rpc_server'
 	execute s:py_cmd 'neovim_rpc_server.start()'
 
-	let g:_nvim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
+	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
 	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop()'
 
 	" identify myself
-	call ch_sendexpr(g:_nvim_rpc_main_channel,'neovim_rpc_setup')
+	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
 
 	return g:_neovim_rpc_address
 endfunc
@@ -72,7 +72,7 @@ elseif has('python')
   let s:pyfile_cmd = 'pyfile'
 endif
 
-let g:_nvim_rpc_main_channel = -1
+let g:_neovim_rpc_main_channel = -1
 let g:_neovim_rpc_jobs = {}
 
 let s:leaving = 0

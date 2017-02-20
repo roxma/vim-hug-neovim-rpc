@@ -480,7 +480,7 @@ def stop_post():
 
     # close the main channel
     try:
-        vim.command('call ch_close(g:_nvim_rpc_main_channel)')
+        vim.command('call ch_close(g:_neovim_rpc_main_channel)')
     except Exception as ex:
         logger.info("ch_close failed: %s", ex)
 
