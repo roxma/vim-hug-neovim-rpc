@@ -23,9 +23,9 @@ else:
 
 
 if sys.version_info.major == 2:
-    from Queue import Queue
+    from Queue import Queue, Empty as QueueEmpty
 else:
-    from queue import Queue
+    from queue import Queue, Empty as QueueEmpty
 
 # NVIM_PYTHON_LOG_FILE=nvim.log NVIM_PYTHON_LOG_LEVEL=INFO vim test.md
 
@@ -38,6 +38,10 @@ except ImportError:
 
 # globals
 logger = logging.getLogger(__name__)
+# supress the annoying error message: 
+#     No handlers could be found for logger "neovim_rpc_server"
+logger.addHandler(logging.NullHandler())
+
 request_queue = Queue()
 
 
@@ -56,13 +60,24 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
     _sock = None
 
     @classmethod
-    def notify(cls):
-        if not MainChannelHandler._sock:
-            return
-        with MainChannelHandler._lock:
-            encoded = json.dumps(['ex', "call neovim_rpc#_callback()"])
-            logger.info("sending notification {0}".format(encoded))
-            MainChannelHandler._sock.send(encoded.encode('utf-8'))
+    def notify(cls,cmd="call neovim_rpc#_callback()"):
+        try:
+            if not MainChannelHandler._sock:
+                return
+            with MainChannelHandler._lock:
+                encoded = json.dumps(['ex', cmd])
+                logger.info("sending notification {0}".format(encoded))
+                MainChannelHandler._sock.send(encoded.encode('utf-8'))
+        except Exception as ex:
+            logger.exception('MainChannelHandler notify exception: %s',ex)
+
+    @classmethod
+    def notify_exited(cls,channel):
+        try:
+            cmd = "call neovim_rpc#_on_exit(%s)" % channel
+            cls.notify(cmd)
+        except Exception as ex:
+            logger.exception('notify_exited for channel [%s] exception: %s',channel,ex)
 
     # each connection is a thread
     def handle(self):
@@ -115,7 +130,7 @@ class SocketToStream():
     def write(self,w):
         return self._sock.send(w)
 
-class NvimClientHandler(socketserver.BaseRequestHandler):
+class TcpChannelHandler(socketserver.BaseRequestHandler):
 
     channel_sockets = {}
 
@@ -126,7 +141,7 @@ class NvimClientHandler(socketserver.BaseRequestHandler):
         channel = _channel_id_new()
 
         sock = self.request
-        NvimClientHandler.channel_sockets[channel] = sock
+        TcpChannelHandler.channel_sockets[channel] = sock
 
         try:
             f = SocketToStream(sock)
@@ -144,14 +159,25 @@ class NvimClientHandler(socketserver.BaseRequestHandler):
             logger.exception('unpacker failed.')
         finally:
             try:
-                NvimClientHandler.channel_sockets.pop(channel)
+                TcpChannelHandler.channel_sockets.pop(channel)
                 sock.close()
             except:
                 pass
 
     @classmethod
     def notify(cls,channel,event,args):
-        pass
+        try:
+            channel = int(channel)
+            if channel not in cls.channel_sockets:
+                logger.info("channel[%s] not in TcpChannelHandler", channel)
+                return
+            sock = cls.channel_sockets[channel]
+            content = [2, event, args]
+            logger.info("notify channel[%s]: %s", channel, content)
+            packed = msgpack.packb(content)
+            sock.send(packed)
+        except Exception as ex:
+            logger.exception("notify failed: %s", ex)
 
     @classmethod
     def shutdown(cls):
@@ -186,7 +212,6 @@ class JobChannelHandler(threading.Thread):
         try:
 
             logger.info("reading for job: %s", channel)
-
             class HackStdout():
                 def __init__(self,o):
                     self._stdout = o
@@ -216,7 +241,9 @@ class JobChannelHandler(threading.Thread):
                     proc.kill()
             except Exception as ex:
                 logger.exception("exception during finally block for job channel %s: %s", channel,ex)
-                pass
+
+            # notify on exit
+            MainChannelHandler.notify_exited(channel)
 
     @classmethod
     def notify(cls,channel,event,args):
@@ -287,7 +314,7 @@ def start():
     global _server_main
     global _server_clients
     _server_main = ThreadedTCPServer(("127.0.0.1", 0), MainChannelHandler)
-    _server_clients = ThreadedTCPServer(("127.0.0.1", 0), NvimClientHandler)
+    _server_clients = ThreadedTCPServer(("127.0.0.1", 0), TcpChannelHandler)
 
     # Start a thread with the server -- that thread will then start one
     # more thread for each request
@@ -362,6 +389,9 @@ def process_pending_requests():
                     logger.info('notification process result: [%s]', result)
                 except Exception as ex:
                     logger.exception("process failed: %s", ex)
+
+        except QueueEmpty as em:
+            pass
         except Exception as ex:
             logger.exception("exception during process: %s", ex)
         finally:
@@ -408,7 +438,7 @@ def stop():
     _server_clients.server_close()
 
     # remove all sockets
-    NvimClientHandler.shutdown()
+    TcpChannelHandler.shutdown()
     JobChannelHandler.shutdown()
 
     logger.info("shutdown finished")

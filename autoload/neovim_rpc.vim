@@ -1,15 +1,4 @@
 
-if has('python3')
-  let s:py_cmd = 'python3'
-  let s:pyfile_cmd = 'py3file'
-elseif has('python')
-  let s:py_cmd = 'python'
-  let s:pyfile_cmd = 'pyfile'
-endif
-
-let g:_nvim_rpc_main_channel = -1
-let g:_nvim_rpc_jobs = {}
-
 func! neovim_rpc#serveraddr()
 	if exists('g:_neovim_rpc_address')
 		return g:_neovim_rpc_address
@@ -29,17 +18,24 @@ func! neovim_rpc#serveraddr()
 	return g:_neovim_rpc_address
 endfunc
 
-func! neovim_rpc#jobstart(cmd,opts)
+" opt keys:
+" - on_exit
+func! neovim_rpc#jobstart(cmd,...)
+
+	let l:opts = {}
+	if len(a:000)>=1
+		let l:opts = a:1
+	endif
 
 	" init
 	call neovim_rpc#serveraddr()
 
-	let g:_neovim_rpc_tmp_args  = [a:cmd,a:opts]
+	let g:_neovim_rpc_tmp_args  = [a:cmd, l:opts]
 	execute s:py_cmd 'neovim_rpc_server.jobstart()'
 	if g:_neovim_rpc_tmp_ret>0
 		" g:_neovim_rpc_tmp_ret is the jobid
 		" remember options
-		let g:_nvim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
+		let g:_nvim_rpc_jobs[string(g:_neovim_rpc_tmp_ret)] = {'cmd': a:cmd, 'opts': l:opts}
 	endif
 	return g:_neovim_rpc_tmp_ret
 endfunc
@@ -48,6 +44,19 @@ func! neovim_rpc#rpcnotify(channel,event,...)
 	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
 	execute s:py_cmd 'neovim_rpc_server.rpcnotify()'
 	" a:000
+endfunc
+
+func! neovim_rpc#_on_exit(channel)
+	" let g:_nvim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
+	let l:key = string(a:channel)
+	if !has_key(g:_nvim_rpc_jobs,l:key)
+		return
+	endif
+	let l:opts = g:_nvim_rpc_jobs[l:key]['opts']
+	if has_key(l:opts,'on_exit')
+		call call(l:opts['on_exit'],[a:channel,'','exited'],l:opts)
+	endif
+	unlet g:_nvim_rpc_jobs[l:key]
 endfunc
 
 func! neovim_rpc#_callback()
@@ -59,4 +68,15 @@ endfunc
 func! neovim_rpc#_jobkillall(...)
 	execute s:py_cmd 'neovim_rpc_server.jobkillall()'
 endfunc
+
+if has('python3')
+  let s:py_cmd = 'python3'
+  let s:pyfile_cmd = 'py3file'
+elseif has('python')
+  let s:py_cmd = 'python'
+  let s:pyfile_cmd = 'pyfile'
+endif
+
+let g:_nvim_rpc_main_channel = -1
+let g:_nvim_rpc_jobs = {}
 
