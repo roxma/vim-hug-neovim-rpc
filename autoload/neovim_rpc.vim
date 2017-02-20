@@ -10,7 +10,8 @@ func! neovim_rpc#serveraddr()
 	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop()'
+	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop_pre()'
+	au VimLeave *  execute s:py_cmd 'neovim_rpc_server.stop_post()'
 
 	" identify myself
 	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')

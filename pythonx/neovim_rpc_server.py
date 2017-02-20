@@ -195,8 +195,10 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
 class JobChannelHandler(threading.Thread):
 
     channel_procs = {}
+
     is_stopping = False
     stopping_queue = Queue()
+    stopping_cnt = 0
 
     def __init__(self,proc,channel):
         channel = int(channel)
@@ -284,14 +286,19 @@ class JobChannelHandler(threading.Thread):
             finally:
                 cnt += 1
 
-        for i in range(cnt):
+        cls.stopping_cnt = cnt
+
+    @classmethod
+    def join_shutdown(cls):
+
+        for i in range(cls.stopping_cnt):
             channel = JobChannelHandler.stopping_queue.get(True,timeout=2)
             # call on exit handler
             cmd = 'call neovim_rpc#_on_exit(%s)' % channel
             logger.info("shutdown: %s",cmd)
             vim.command(cmd)
 
-        # getting out of patience
+        # getting out of patience, kill them all
         cls.killall()
 
 
@@ -454,7 +461,7 @@ def rpcnotify():
     JobChannelHandler.notify(channel,method,args)
 
 
-def stop():
+def stop_pre():
 
     logger.info("stop_pre begin")
 
@@ -466,17 +473,14 @@ def stop():
     TcpChannelHandler.shutdown()
     JobChannelHandler.shutdown()
 
-    # # wait until all jobs exiting
-    # if len(vim.vars['_neovim_rpc_jobs'])==0:
-    #     stop_post()
-    stop_post()
-
     logger.info("stop_pre end")
 
 
 def stop_post():
 
     logger.info("stop_post begin")
+
+    JobChannelHandler.join_shutdown()
 
     # close the main channel
     try:
