@@ -235,7 +235,7 @@ class JobChannelHandler(threading.Thread):
             try:
                 # remove it from registration
                 JobChannelHandler.channel_procs.pop(channel)
-                if not proc.poll():
+                if proc.poll() is None:
                     # kill it 
                     logger.exception("killing channel[%s] in finally block", channel)
                     proc.kill()
