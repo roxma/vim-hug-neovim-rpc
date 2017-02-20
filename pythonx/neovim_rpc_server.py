@@ -66,10 +66,10 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
                 return
             with MainChannelHandler._lock:
                 encoded = json.dumps(['ex', cmd])
-                logger.info("sending notification {0}".format(encoded))
+                logger.info("sending notification: %s",encoded)
                 MainChannelHandler._sock.send(encoded.encode('utf-8'))
         except Exception as ex:
-            logger.exception('MainChannelHandler notify exception: %s',ex)
+            logger.exception('MainChannelHandler notify exception for [%s]: %s', cmd, ex)
 
     @classmethod
     def notify_exited(cls,channel):
@@ -195,6 +195,8 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
 class JobChannelHandler(threading.Thread):
 
     channel_procs = {}
+    is_stopping = False
+    stopping_queue = Queue()
 
     def __init__(self,proc,channel):
         channel = int(channel)
@@ -245,6 +247,10 @@ class JobChannelHandler(threading.Thread):
             # notify on exit
             MainChannelHandler.notify_exited(channel)
 
+            # notify here
+            if JobChannelHandler.is_stopping:
+                JobChannelHandler.stopping_queue.put(channel)
+
     @classmethod
     def notify(cls,channel,event,args):
         try:
@@ -262,12 +268,32 @@ class JobChannelHandler(threading.Thread):
 
     @classmethod
     def shutdown(cls):
+
+        JobChannelHandler.is_stopping = True
+        cnt = 0
+
+        """
+        This method is called from the main thread, terminating all jobs
+        """
         for channel in cls.channel_procs:
             logger.info('terminating channel [%s]',channel)
             try:
                 cls.channel_procs[channel].terminate()
             except Exception as ex:
                 logger.info('send terminate signal failed for channel [%s]: %s',channel, ex)
+            finally:
+                cnt += 1
+
+        for i in range(cnt):
+            channel = JobChannelHandler.stopping_queue.get(True,timeout=2)
+            # call on exit handler
+            cmd = 'call neovim_rpc#_on_exit(%s)' % channel
+            logger.info("shutdown: %s",cmd)
+            vim.command(cmd)
+
+        # getting out of patience
+        cls.killall()
+
 
     @classmethod
     def killall(cls):
@@ -430,10 +456,9 @@ def rpcnotify():
 
 def stop():
 
-    logger.info("stopping")
+    logger.info("stop_pre begin")
 
-    _server_main.shutdown()
-    _server_main.server_close()
+    # close tcp channel server
     _server_clients.shutdown()
     _server_clients.server_close()
 
@@ -441,9 +466,33 @@ def stop():
     TcpChannelHandler.shutdown()
     JobChannelHandler.shutdown()
 
-    logger.info("shutdown finished")
+    # # wait until all jobs exiting
+    # if len(vim.vars['_neovim_rpc_jobs'])==0:
+    #     stop_post()
+    stop_post()
 
-def jobkillall():
-    JobChannelHandler.killall()
+    logger.info("stop_pre end")
+
+
+def stop_post():
+
+    logger.info("stop_post begin")
+
+    # close the main channel
+    try:
+        vim.command('call ch_close(g:_nvim_rpc_main_channel)')
+    except Exception as ex:
+        logger.info("ch_close failed: %s", ex)
+
+    try:
+        # stop the main channel
+        _server_main.shutdown()
+    except Exception as ex:
+        logger.info("_server_main shutodwn failed: %s", ex)
+
+    try:
+        _server_main.server_close()
+    except Exception as ex:
+        logger.info("_server_main close failed: %s", ex)
 
 

@@ -10,7 +10,7 @@ func! neovim_rpc#serveraddr()
 	let g:_nvim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  call ch_close(g:_nvim_rpc_main_channel) | execute s:py_cmd 'neovim_rpc_server.stop()' | call timer_start(2000,'neovim_rpc#_jobkillall')
+	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop()'
 
 	" identify myself
 	call ch_sendexpr(g:_nvim_rpc_main_channel,'neovim_rpc_setup')
@@ -35,7 +35,7 @@ func! neovim_rpc#jobstart(cmd,...)
 	if g:_neovim_rpc_tmp_ret>0
 		" g:_neovim_rpc_tmp_ret is the jobid
 		" remember options
-		let g:_nvim_rpc_jobs[string(g:_neovim_rpc_tmp_ret)] = {'cmd': a:cmd, 'opts': l:opts}
+		let g:_neovim_rpc_jobs[string(g:_neovim_rpc_tmp_ret)] = {'cmd': a:cmd, 'opts': l:opts}
 	endif
 	return g:_neovim_rpc_tmp_ret
 endfunc
@@ -47,26 +47,21 @@ func! neovim_rpc#rpcnotify(channel,event,...)
 endfunc
 
 func! neovim_rpc#_on_exit(channel)
-	" let g:_nvim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
+	" let g:_neovim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
 	let l:key = string(a:channel)
-	if !has_key(g:_nvim_rpc_jobs,l:key)
+	if !has_key(g:_neovim_rpc_jobs,l:key)
 		return
 	endif
-	let l:opts = g:_nvim_rpc_jobs[l:key]['opts']
+	let l:opts = g:_neovim_rpc_jobs[l:key]['opts']
+	" remove entry
+	unlet g:_neovim_rpc_jobs[l:key]
 	if has_key(l:opts,'on_exit')
 		call call(l:opts['on_exit'],[a:channel,'','exited'],l:opts)
 	endif
-	unlet g:_nvim_rpc_jobs[l:key]
 endfunc
 
 func! neovim_rpc#_callback()
 	execute s:py_cmd 'neovim_rpc_server.process_pending_requests()'
-endfunc
-
-" getting out of patience
-" kill them all
-func! neovim_rpc#_jobkillall(...)
-	execute s:py_cmd 'neovim_rpc_server.jobkillall()'
 endfunc
 
 if has('python3')
@@ -78,5 +73,6 @@ elseif has('python')
 endif
 
 let g:_nvim_rpc_main_channel = -1
-let g:_nvim_rpc_jobs = {}
+let g:_neovim_rpc_jobs = {}
 
+let s:leaving = 0
