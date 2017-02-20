@@ -292,11 +292,14 @@ class JobChannelHandler(threading.Thread):
     def join_shutdown(cls):
 
         for i in range(cls.stopping_cnt):
-            channel = JobChannelHandler.stopping_queue.get(True,timeout=2)
-            # call on exit handler
-            cmd = 'call neovim_rpc#_on_exit(%s)' % channel
-            logger.info("shutdown: %s",cmd)
-            vim.command(cmd)
+            try:
+                channel = JobChannelHandler.stopping_queue.get(True,timeout=2)
+                # call on exit handler
+                cmd = 'call neovim_rpc#_on_exit(%s)' % channel
+                logger.info("shutdown: %s",cmd)
+                vim.command(cmd)
+            except QueueEmpty as ex:
+                pass
 
         # getting out of patience, kill them all
         cls.killall()
