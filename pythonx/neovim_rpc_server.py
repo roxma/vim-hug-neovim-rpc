@@ -312,6 +312,12 @@ class JobChannelHandler(threading.Thread):
             logger.info('killing channel [%s]',channel)
             try:
                 cls.channel_procs[channel].kill()
+
+                # call on exit handler
+                cmd = 'call neovim_rpc#_on_exit(%s)' % channel
+                logger.info("shutdown: %s",cmd)
+                vim.command(cmd)
+
             except Exception as ex:
                 logger.info('kill failed for channel [%s]: %s',channel, ex)
 
