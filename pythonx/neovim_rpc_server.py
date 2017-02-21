@@ -475,7 +475,7 @@ def rpcnotify():
     channel, method, args = args 
     args = json.loads(vim.eval('json_encode(a:000)'))
     JobChannelHandler.notify(channel,method,args)
-
+    TcpChannelHandler.notify(channel,method,args)
 
 def stop_pre():
 
