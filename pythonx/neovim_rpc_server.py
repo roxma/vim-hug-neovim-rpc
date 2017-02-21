@@ -456,7 +456,13 @@ def _process_request(channel,method,args):
 
 def jobstart():
     channel = _channel_id_new()
-    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_args'][0], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL)
+    """Launches 'command' windowless and waits until finished"""
+    startupinfo = subprocess.STARTUPINFO()
+    try:
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+	except:
+        pass
+    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_args'][0], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL, startupinfo=startupinfo)
     handler = JobChannelHandler(proc,channel)
     handler.start()
     logger.info("jobstart for %s", channel)
