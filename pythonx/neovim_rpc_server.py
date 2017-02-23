@@ -111,7 +111,7 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
                 # initial setup
                 encoded = json.dumps(['ex', "scall neovim_rpc#_callback()"])
                 logger.info("sending {0}".format(encoded))
-                self.request.sendall(encoded.encode('utf-8'))
+                self.request.send(encoded.encode('utf-8'))
 
             else:
 
@@ -422,7 +422,7 @@ def process_pending_requests():
                 logger.info("sending result: %s", result)
                 packed = msgpack.packb(result)
                 f.write(packed)
-
+                logger.info("sended")
             if msg[0] == 2:
                 # notification
                 req_typed, method, args = msg
@@ -444,6 +444,11 @@ def process_pending_requests():
                 break
 
 def _process_request(channel,method,args):
+    # patch for python3
+    if sys.version_info.major==3:
+        if type(method)==type(b''):
+            method = method.decode('utf-8')
+        args = map(lambda x: x.decode('utf-8') if type(x)==type(b'') else x,args)
     if method=='vim_get_api_info':
         # this is the first request send from neovim client
         api_info = neovim_rpc_server_api_info.API_INFO
@@ -463,7 +468,10 @@ def jobstart():
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
     except:
         pass
-    proc = subprocess.Popen(args=vim.vars['_neovim_rpc_tmp_args'][0], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL, startupinfo=startupinfo)
+    args =  vim.vars['_neovim_rpc_tmp_args'][0]
+    if sys.version_info.major==3:
+        args = [x if type(x)==type('') else x.decode('utf-8') for x in args]
+    proc = subprocess.Popen(args=args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL, startupinfo=startupinfo)
     handler = JobChannelHandler(proc,channel)
     handler.start()
     logger.info("jobstart for %s", channel)
