@@ -15,6 +15,7 @@ import socket
 import time
 import subprocess
 from neovim.api import common as neovim_common
+import neovim_rpc_protocol
 
 # protable devnull
 if sys.version_info.major==2:
@@ -175,7 +176,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
             sock = cls.channel_sockets[channel]
             content = [2, event, args]
             logger.info("notify channel[%s]: %s", channel, content)
-            packed = msgpack.packb(content)
+            packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
             sock.send(packed)
         except Exception as ex:
             logger.exception("notify failed: %s", ex)
@@ -264,7 +265,7 @@ class JobChannelHandler(threading.Thread):
             proc = cls.channel_procs[channel]
             content = [2, event, args]
             logger.info("notify channel[%s]: %s", channel, content)
-            packed = msgpack.packb(content)
+            packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
             proc.stdin.write(packed)
         except Exception as ex:
             logger.exception("notify failed: %s", ex)
@@ -385,8 +386,7 @@ def process_pending_requests():
 
             f, channel, msg = item
 
-            if sys.version_info.major!=2:
-                msg = neovim_common.walk(neovim_common.decode_if_bytes, msg)
+            msg = neovim_rpc_protocol.from_client(msg)
 
             logger.info("get msg from channel [%s]: %s", channel, msg)
 
@@ -413,18 +413,17 @@ def process_pending_requests():
                 req_typed, req_id, method, args = msg
 
                 try:
+                    err=None
                     result = _process_request(channel,method,args)
                 except Exception as ex:
                     logger.exception("process failed: %s", ex)
                     # error uccor
-                    packed = msgpack.packb([1, req_id, [1,str(ex)], None])
-                    logger.info("sending result: %s", packed)
-                    f.write(packed)
-                    continue
+                    err = [1,str(ex)]
+                    result = None
 
-                result = [1,req_id,None,result]
+                result = [1,req_id,err,result]
                 logger.info("sending result: %s", result)
-                packed = msgpack.packb(result)
+                packed = msgpack.packb(neovim_rpc_protocol.to_client(result))
                 f.write(packed)
                 logger.info("sended")
             if msg[0] == 2:
