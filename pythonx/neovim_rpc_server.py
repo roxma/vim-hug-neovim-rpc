@@ -182,7 +182,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
     @classmethod
     def shutdown(cls):
         # close all sockets
-        for channel in cls.channel_sockets:
+        for channel in list(cls.channel_sockets.keys()):
             sock = cls.channel_sockets.get(channel,None)
             if sock:
                 logger.info("closing client %s", channel)
