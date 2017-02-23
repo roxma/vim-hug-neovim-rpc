@@ -14,6 +14,7 @@ import threading
 import socket
 import time
 import subprocess
+from neovim.api import common as neovim_common
 
 # protable devnull
 if sys.version_info.major==2:
@@ -384,6 +385,9 @@ def process_pending_requests():
 
             f, channel, msg = item
 
+            if sys.version_info.major!=2:
+                msg = neovim_common.walk(neovim_common.decode_if_bytes, msg)
+
             logger.info("get msg from channel [%s]: %s", channel, msg)
 
             # request format:
@@ -444,11 +448,6 @@ def process_pending_requests():
                 break
 
 def _process_request(channel,method,args):
-    # patch for python3
-    if sys.version_info.major==3:
-        if type(method)==type(b''):
-            method = method.decode('utf-8')
-        args = map(lambda x: x.decode('utf-8') if type(x)==type(b'') else x,args)
     if method=='vim_get_api_info':
         # this is the first request send from neovim client
         api_info = neovim_rpc_server_api_info.API_INFO
