@@ -13,6 +13,9 @@ def nvim_call_function(method,args):
 def nvim_get_current_buf():
     return vim.current.buffer
 
+def nvim_list_bufs():
+    return list(vim.buffers)
+
 def nvim_buf_get_name(buffer):
     return nvim_call_function('bufname', [buffer.number])
 
