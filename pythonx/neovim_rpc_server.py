@@ -194,137 +194,6 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
                 sock.close()
 
 
-class JobChannelHandler(threading.Thread):
-
-    channel_procs = {}
-
-    is_stopping = False
-    stopping_queue = Queue()
-    stopping_cnt = 0
-
-    def __init__(self,proc,channel):
-        channel = int(channel)
-        self._proc = proc
-        self._channel = channel
-        threading.Thread.__init__(self)
-
-        JobChannelHandler.channel_procs[channel] = proc
-
-
-    def run(self):
-
-        channel = self._channel
-        proc = self._proc
-        try:
-
-            logger.info("reading for job: %s", channel)
-            class HackStdout():
-                def __init__(self,o):
-                    self._stdout = o
-                def read(self,cnt):
-                    return self._stdout.read(1)
-
-            unpacker = msgpack.Unpacker(HackStdout(proc.stdout))
-            for unpacked in unpacker:
-                logger.info("unpacked: %s", unpacked)
-                request_queue.put((proc.stdin, channel, unpacked))
-                # notify vim in order to process request in main thread, and
-                # avoiding the stupid json protocol
-                MainChannelHandler.notify()
-
-            # wait for terminating
-            logger.exception("channel [%s] has terminated", channel)
-
-        except Exception as ex:
-            logger.exception("failed for channel %s, %s", channel)
-        finally:
-            try:
-                # remove it from registration
-                JobChannelHandler.channel_procs.pop(channel)
-                if proc.poll() is None:
-                    # kill it 
-                    logger.exception("killing channel[%s] in finally block", channel)
-                    proc.kill()
-            except Exception as ex:
-                logger.exception("exception during finally block for job channel %s: %s", channel,ex)
-
-            # notify on exit
-            MainChannelHandler.notify_exited(channel)
-
-            # notify here
-            if JobChannelHandler.is_stopping:
-                JobChannelHandler.stopping_queue.put(channel)
-
-    @classmethod
-    def notify(cls,channel,event,args):
-        try:
-            channel = int(channel)
-            if channel not in cls.channel_procs:
-                logger.info("channel[%s] not in JobChannelHandler", channel)
-                return
-            proc = cls.channel_procs[channel]
-            content = [2, event, args]
-            logger.info("notify channel[%s]: %s", channel, content)
-            packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
-            proc.stdin.write(packed)
-        except Exception as ex:
-            logger.exception("notify failed: %s", ex)
-
-    @classmethod
-    def shutdown(cls):
-
-        JobChannelHandler.is_stopping = True
-        cnt = 0
-
-        """
-        This method is called from the main thread, terminating all jobs
-        """
-        for channel in cls.channel_procs:
-            logger.info('terminating channel [%s]',channel)
-            try:
-                cls.channel_procs[channel].terminate()
-            except Exception as ex:
-                logger.info('send terminate signal failed for channel [%s]: %s',channel, ex)
-            finally:
-                cnt += 1
-
-        cls.stopping_cnt = cnt
-
-    @classmethod
-    def join_shutdown(cls):
-
-        for i in range(cls.stopping_cnt):
-            try:
-                channel = JobChannelHandler.stopping_queue.get(True,timeout=2)
-                # call on exit handler
-                cmd = 'call neovim_rpc#_on_exit(%s)' % channel
-                logger.info("shutdown: %s",cmd)
-                vim.command(cmd)
-            except QueueEmpty as ex:
-                pass
-
-        # getting out of patience, kill them all
-        cls.killall()
-
-
-    @classmethod
-    def killall(cls):
-        logger.info('killall jobs')
-        for channel in cls.channel_procs:
-            logger.info('killing channel [%s]',channel)
-            try:
-                cls.channel_procs[channel].kill()
-
-                # call on exit handler
-                cmd = 'call neovim_rpc#_on_exit(%s)' % channel
-                logger.info("shutdown: %s",cmd)
-                vim.command(cmd)
-
-            except Exception as ex:
-                logger.info('kill failed for channel [%s]: %s',channel, ex)
-
-
-
 # copied from neovim python-client/neovim/__init__.py
 def _setup_logging(name):
     """Setup logging according to environment variables."""
@@ -457,58 +326,28 @@ def _process_request(channel,method,args):
         logger.error("method %s not implemented", method)
         raise Exception('%s not implemented' % method)
 
-def jobstart():
-    channel = _channel_id_new()
-    """Launches 'command' windowless and waits until finished"""
-    startupinfo = None
-    try:
-        startupinfo = subprocess.STARTUPINFO()
-        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    except:
-        pass
-    args =  vim.vars['_neovim_rpc_tmp_args'][0]
-    if sys.version_info.major==3:
-        args = [x if type(x)==type('') else x.decode('utf-8') for x in args]
-    proc = subprocess.Popen(args=args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=DEVNULL, startupinfo=startupinfo)
-    handler = JobChannelHandler(proc,channel)
-    handler.start()
-    logger.info("jobstart for %s", channel)
-    vim.vars['_neovim_rpc_tmp_ret'] = channel
-    return channel
-
 def rpcnotify():
     args = vim.vars['_neovim_rpc_tmp_args']
     channel, method, args = args 
     args = json.loads(vim.eval('json_encode(a:000)'))
-    JobChannelHandler.notify(channel,method,args)
     TcpChannelHandler.notify(channel,method,args)
 
-def stop_pre():
+def stop():
 
-    logger.info("stop_pre begin")
+    logger.info("stop begin")
 
     # close tcp channel server
     _server_clients.shutdown()
     _server_clients.server_close()
-
-    # remove all sockets
-    TcpChannelHandler.shutdown()
-    JobChannelHandler.shutdown()
-
-    logger.info("stop_pre end")
-
-
-def stop_post():
-
-    logger.info("stop_post begin")
-
-    JobChannelHandler.join_shutdown()
 
     # close the main channel
     try:
         vim.command('call ch_close(g:_neovim_rpc_main_channel)')
     except Exception as ex:
         logger.info("ch_close failed: %s", ex)
+
+    # remove all sockets
+    TcpChannelHandler.shutdown()
 
     try:
         # stop the main channel

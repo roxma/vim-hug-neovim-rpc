@@ -10,8 +10,7 @@ func! neovim_rpc#serveraddr()
 	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop_pre()'
-	au VimLeave *  execute s:py_cmd 'neovim_rpc_server.stop_post()'
+	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop()'
 
 	" identify myself
 	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
@@ -19,26 +18,39 @@ func! neovim_rpc#serveraddr()
 	return g:_neovim_rpc_address
 endfunc
 
-" opt keys:
+" supported opt keys:
+" - on_stdout
+" - on_stderr
 " - on_exit
+" - detach
 func! neovim_rpc#jobstart(cmd,...)
 
 	let l:opts = {}
-	if len(a:000)>=1
+	if len(a:000)
 		let l:opts = a:1
 	endif
 
-	" init
-	call neovim_rpc#serveraddr()
-
-	let g:_neovim_rpc_tmp_args  = [a:cmd, l:opts]
-	execute s:py_cmd 'neovim_rpc_server.jobstart()'
-	if g:_neovim_rpc_tmp_ret>0
-		" g:_neovim_rpc_tmp_ret is the jobid
-		" remember options
-		let g:_neovim_rpc_jobs[string(g:_neovim_rpc_tmp_ret)] = {'cmd': a:cmd, 'opts': l:opts}
+	let l:real_opts = {'mode': 'raw'}
+	if has_key(l:opts,'detach') && l:opts['detach']
+		let l:real_opts['stoponexit'] = ''
 	endif
-	return g:_neovim_rpc_tmp_ret
+
+	if has_key(l:opts,'on_stdout')
+		let l:real_opts['out_cb'] = function('neovim_rpc#_on_stdout')
+	endif
+	if has_key(l:opts,'on_stderr')
+		let l:real_opts['err_cb'] = function('neovim_rpc#_on_stderr')
+	endif
+	if has_key(l:opts,'on_exit')
+		let l:real_opts['exit_cb'] = function('neovim_rpc#_on_exit')
+	endif
+
+	let l:job   = job_start(a:cmd, l:real_opts)
+	let l:jobid = ch_info(l:job)['id']
+
+	let g:_neovim_rpc_jobs[l:jobid] = {'cmd':a:cmd, 'opts': l:opts, 'job': l:job}
+
+	return l:jobid
 endfunc
 
 func! neovim_rpc#rpcnotify(channel,event,...)
@@ -47,18 +59,26 @@ func! neovim_rpc#rpcnotify(channel,event,...)
 	" a:000
 endfunc
 
-func! neovim_rpc#_on_exit(channel)
-	" let g:_neovim_rpc_jobs[g:_neovim_rpc_tmp_ret . ''] = {'cmd': a:cmd, 'opts':a:opts}
-	let l:key = string(a:channel)
-	if !has_key(g:_neovim_rpc_jobs,l:key)
-		return
-	endif
-	let l:opts = g:_neovim_rpc_jobs[l:key]['opts']
-	" remove entry
-	unlet g:_neovim_rpc_jobs[l:key]
-	if has_key(l:opts,'on_exit')
-		call call(l:opts['on_exit'],[a:channel,'','exited'],l:opts)
-	endif
+func! neovim_rpc#_on_stdout(job,data)
+	let l:jobid = ch_info(a:job)['id']
+	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
+	" convert to neovim style function call
+	call call(l:opts['on_stdout'],[l:jobid,split(a:data,"\n",1),'stdout'],l:opts)
+endfunc
+
+func! neovim_rpc#_on_stderr(job,data)
+	let l:jobid = ch_info(a:job)['id']
+	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
+	" convert to neovim style function call
+	call call(l:opts['on_stderr'],[l:jobid,split(a:data,"\n",1),'stderr'],l:opts)
+endfunc
+
+func! neovim_rpc#_on_exit(job,status)
+	let l:jobid = ch_info(a:job)['id']
+	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
+	" convert to neovim style function call
+	call call(l:opts['on_exit'],[l:jobid,a:status,'exit'],l:opts)
+	unlet g:_neovim_rpc_jobs[l:jobid]
 endfunc
 
 func! neovim_rpc#_callback()
