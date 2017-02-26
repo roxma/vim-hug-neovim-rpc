@@ -53,6 +53,11 @@ func! neovim_rpc#jobstart(cmd,...)
 	return l:jobid
 endfunc
 
+func! neovim_rpc#jobstop(jobid)
+	let l:job = g:_neovim_rpc_jobs[a:jobid]['job']
+	return job_stop(l:job)
+endfunc
+
 func! neovim_rpc#rpcnotify(channel,event,...)
 	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
 	execute s:py_cmd 'neovim_rpc_server.rpcnotify()'
