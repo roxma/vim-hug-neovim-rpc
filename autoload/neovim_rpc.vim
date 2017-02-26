@@ -61,7 +61,6 @@ endfunc
 func! neovim_rpc#rpcnotify(channel,event,...)
 	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
 	execute s:py_cmd 'neovim_rpc_server.rpcnotify()'
-	" a:000
 endfunc
 
 func! neovim_rpc#_on_stdout(job,data)
