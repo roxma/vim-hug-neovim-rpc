@@ -50,4 +50,6 @@ def buffer_set_lines(buffer,start,end,err,lines):
         # vim needs' redraw to update the screen, it seems to be a bug
         vim.command('redraw')
 
+def buffer_line_count(buffer):
+    return len(buffer)
 
