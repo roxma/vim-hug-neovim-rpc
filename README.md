@@ -18,6 +18,7 @@ open a PR if you get any idea on improving it**.
 
 - vim8 with `has('python')` or `has('python3')`
 - installation of
-  [msgpack-python](https://pypi.python.org/pypi/msgpack-python). (`pip install
-  msgpack-python`)
+  [neovim/python-client](https://github.com/neovim/python-client). (`pip
+  install neovim`). There should be no error when you execute `:python import
+  neovim` or `:python3 import neovim`
 
