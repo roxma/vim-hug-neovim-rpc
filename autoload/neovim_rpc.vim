@@ -1,10 +1,19 @@
 
+
+if has('pythonx')
+	let s:py = 'pythonx'
+elseif has('python3')
+	let s:py = 'python3'
+else
+	let s:py = 'python'
+endif
+
 func! neovim_rpc#serveraddr()
 	if exists('g:_neovim_rpc_address')
 		return g:_neovim_rpc_address
 	endif
 
-	pythonx import neovim_rpc_server
+	execute s:py ' import neovim_rpc_server'
 	let l:servers = pyxeval('neovim_rpc_server.start()')
 
 	let g:_neovim_rpc_address     = l:servers[0]
@@ -13,7 +22,7 @@ func! neovim_rpc#serveraddr()
 	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  let s:leaving = 1 | pythonx neovim_rpc_server.stop()
+	au VimLeavePre *  let s:leaving = 1 | execute s:py . ' neovim_rpc_server.stop()'
 
 	" identify myself
 	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
@@ -23,9 +32,8 @@ endfunc
 
 " elegant python function call wrapper
 func! neovim_rpc#pyxcall(func,...)
-	pythonx import vim
-	pythonx import json
-	" pythonx 
+	execute s:py . ' import vim'
+	execute s:py . ' import json'
 	let l:i = 1
 	let l:cnt = len(a:000)
 	let l:args = []
@@ -104,7 +112,7 @@ func! neovim_rpc#_on_exit(job,status)
 endfunc
 
 func! neovim_rpc#_callback()
-	pythonx neovim_rpc_server.process_pending_requests()
+	execute s:py . ' neovim_rpc_server.process_pending_requests()'
 endfunc
 
 let g:_neovim_rpc_main_channel = -1
