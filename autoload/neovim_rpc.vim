@@ -4,13 +4,13 @@ func! neovim_rpc#serveraddr()
 		return g:_neovim_rpc_address
 	endif
 
-	execute s:py_cmd 'import neovim_rpc_server'
-	execute s:py_cmd 'neovim_rpc_server.start()'
+	pythonx import neovim_rpc_server
+	pythonx neovim_rpc_server.start()
 
 	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
 	" close channel before vim exit
-	au VimLeavePre *  let s:leaving = 1 | execute s:py_cmd 'neovim_rpc_server.stop()'
+	au VimLeavePre *  let s:leaving = 1 | pythonx neovim_rpc_server.stop()
 
 	" identify myself
 	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
@@ -60,7 +60,7 @@ endfunc
 
 func! neovim_rpc#rpcnotify(channel,event,...)
 	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
-	execute s:py_cmd 'neovim_rpc_server.rpcnotify()'
+	pythonx neovim_rpc_server.rpcnotify()
 endfunc
 
 func! neovim_rpc#_on_stdout(job,data)
@@ -86,16 +86,8 @@ func! neovim_rpc#_on_exit(job,status)
 endfunc
 
 func! neovim_rpc#_callback()
-	execute s:py_cmd 'neovim_rpc_server.process_pending_requests()'
+	pythonx neovim_rpc_server.process_pending_requests()
 endfunc
-
-if has('python3')
-  let s:py_cmd = 'python3'
-  let s:pyfile_cmd = 'py3file'
-elseif has('python')
-  let s:py_cmd = 'python'
-  let s:pyfile_cmd = 'pyfile'
-endif
 
 let g:_neovim_rpc_main_channel = -1
 let g:_neovim_rpc_jobs = {}
