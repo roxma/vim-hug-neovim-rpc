@@ -5,7 +5,10 @@ func! neovim_rpc#serveraddr()
 	endif
 
 	pythonx import neovim_rpc_server
-	pythonx neovim_rpc_server.start()
+	let l:servers = pyxeval('neovim_rpc_server.start()')
+
+	let g:_neovim_rpc_address     = l:servers[0]
+	let g:_neovim_rpc_main_address = l:servers[1]
 
 	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_main_address)
 
@@ -16,6 +19,22 @@ func! neovim_rpc#serveraddr()
 	call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
 
 	return g:_neovim_rpc_address
+endfunc
+
+" elegant python function call wrapper
+func! neovim_rpc#pyxcall(func,...)
+	pythonx import vim
+	pythonx import json
+	" pythonx 
+	let l:i = 1
+	let l:cnt = len(a:000)
+	let l:args = []
+	while l:i <= l:cnt
+		call add(l:args,'json.loads(vim.eval("json_encode(a:'.l:i.')"))')
+		let l:i += 1
+	endwhile
+	return pyxeval(a:func . '(' . join(l:args,',') . ')')
+	" return l:args
 endfunc
 
 " supported opt keys:
@@ -59,8 +78,7 @@ func! neovim_rpc#jobstop(jobid)
 endfunc
 
 func! neovim_rpc#rpcnotify(channel,event,...)
-	let g:_neovim_rpc_tmp_args  = [a:channel,a:event,a:000]
-	pythonx neovim_rpc_server.rpcnotify()
+	call neovim_rpc#pyxcall('neovim_rpc_server.rpcnotify',a:channel,a:event,a:000)
 endfunc
 
 func! neovim_rpc#_on_stdout(job,data)

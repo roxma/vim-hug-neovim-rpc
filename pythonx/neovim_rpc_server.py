@@ -240,8 +240,7 @@ def start():
     clients_server_thread.daemon = True
     clients_server_thread.start()
 
-    vim.vars['_neovim_rpc_address']  = "{addr[0]}:{addr[1]}".format(addr=_server_clients.server_address)
-    vim.vars['_neovim_rpc_main_address']  = "{addr[0]}:{addr[1]}".format(addr=_server_main.server_address)
+    return ["{addr[0]}:{addr[1]}".format(addr=_server_clients.server_address), "{addr[0]}:{addr[1]}".format(addr=_server_main.server_address)]
 
 def process_pending_requests():
 
@@ -326,10 +325,7 @@ def _process_request(channel,method,args):
         logger.error("method %s not implemented", method)
         raise Exception('%s not implemented' % method)
 
-def rpcnotify():
-    args = vim.vars['_neovim_rpc_tmp_args']
-    channel, method, args = args 
-    args = json.loads(vim.eval('json_encode(a:000)'))
+def rpcnotify(channel,method,args):
     TcpChannelHandler.notify(channel,method,args)
 
 def stop():
