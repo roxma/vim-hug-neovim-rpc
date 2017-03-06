@@ -2,10 +2,13 @@
 
 if has('pythonx')
 	let s:py = 'pythonx'
+	let s:pyeval = function('pyxeval')
 elseif has('python3')
 	let s:py = 'python3'
+	let s:pyeval = function('py3eval')
 else
 	let s:py = 'python'
+	let s:pyeval = function('pyeval')
 endif
 
 func! neovim_rpc#serveraddr()
@@ -14,7 +17,7 @@ func! neovim_rpc#serveraddr()
 	endif
 
 	execute s:py ' import neovim_rpc_server'
-	let l:servers = pyxeval('neovim_rpc_server.start()')
+	let l:servers = s:pyeval('neovim_rpc_server.start()')
 
 	let g:_neovim_rpc_address     = l:servers[0]
 	let g:_neovim_rpc_main_address = l:servers[1]
@@ -41,7 +44,7 @@ func! neovim_rpc#pyxcall(func,...)
 		call add(l:args,'json.loads(vim.eval("json_encode(a:'.l:i.')"))')
 		let l:i += 1
 	endwhile
-	return pyxeval(a:func . '(' . join(l:args,',') . ')')
+	return s:pyeval(a:func . '(' . join(l:args,',') . ')')
 	" return l:args
 endfunc
 
