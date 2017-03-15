@@ -22,3 +22,7 @@ open a PR if you get any idea on improving it**.
   install neovim`). There should be no error when you execute `:python import
   neovim` or `:python3 import neovim`
 
+## Known isues
+
+- [delay on vim8 exit](https://github.com/roxma/nvim-completion-manager/issues/52)
+
