@@ -29,50 +29,55 @@ open a PR if you get any idea on improving it**.
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
-┌───┐            ┌──────────┐          ┌───────────┐          ┌──────┐              ┌────────┐
-│VIM│            │VIM Server│          │NVIM Server│          │Client│              │Receiver│
-└─┬─┘            └────┬─────┘          └─────┬─────┘          └──┬───┘              └───┬────┘
-  │   Launch Thread   │                      │                   │                      │
-  │───────────────────>                      │                   │                      │
-  │                   │                      │                   │                      │
-  │              Launch Thread               │                   │                      │
-  │─────────────────────────────────────────>│                   │                      │
-  │                   │                      │                   │                      │
-  │      ch_open      │                      │                   │                      │
-  │───────────────────>                      │                   │                      │
-  │                   │                      │                   │                      │
-  │                   │                      │      Connect      │                      │
-  │                   │                      │ <──────────────────                      │
-  │                   │                      │                   │                      │
-  │                   │                      │               Launch Thread              │
-  │                   │                      │ ─────────────────────────────────────────>
-  │                   │                      │                   │                      │
-  │                   │                      │                   │ Request (msgpack rpc)│
-  │                   │                      │                   │ ─────────────────────>
-  │                   │                      │                   │                      │
-  │                   │                      │                   │                      │────┐
-  │                   │                      │                   │                      │    │ Request enqueue
-  │                   │                      │                   │                      │<───┘
-  │                   │                      │                   │                      │
-  │                   │                      │notify (method call)                      │
-  │                   │ <────────────────────────────────────────────────────────────────
-  │                   │                      │                   │                      │
-  │ notify (json rpc) │                      │                   │                      │
-  │<───────────────────                      │                   │                      │
-  │                   │                      │                   │                      │
-  ────┐                                      │                   │                      │
-      │ Request dequeue                      │                   │                      │
-  <───┘                                      │                   │                      │
-  │                   │                      │                   │                      │
-  ────┐               │                      │                   │                      │
-      │ Process       │                      │                   │                      │
-  <───┘               │                      │                   │                      │
-  │                   │                      │                   │                      │
-  │                 Send response (msgpack rpc)                  │                      │
-  │──────────────────────────────────────────────────────────────>                      │
-┌─┴─┐            ┌────┴─────┐          ┌─────┴─────┐          ┌──┴───┐              ┌───┴────┐
-│VIM│            │VIM Server│          │NVIM Server│          │Client│              │Receiver│
-└───┘            └──────────┘          └───────────┘          └──────┘              └────────┘
+┌───┐            ┌──────────┐                  ┌───────────┐                    ┌──────┐
+│VIM│            │VIM Server│                  │NVIM Server│                    │Client│
+└─┬─┘            └────┬─────┘                  └─────┬─────┘                    └──┬───┘
+  │   Launch thread   │                              │                             │
+  │───────────────────>                              │                             │
+  │                   │                              │                             │
+  │                  Launch thread                   │                             │
+  │─────────────────────────────────────────────────>│                             │
+  │                   │                              │                             │
+  │ `ch_open` connect │                              │                             │
+  │───────────────────>                              │                             │
+  │                   │                              │                             │
+  │                   │────┐                         │                             │
+  │                   │    │ Launch VimHandler thread│                             │
+  │                   │<───┘                         │                             │
+  │                   │                              │                             │
+  │                   │                              │           Connect           │
+  │                   │                              │<─────────────────────────────
+  │                   │                              │                             │
+  │                   │                              ────┐
+  │                   │                                  │ Launch NvimHandler thread
+  │                   │                              <───┘
+  │                   │                              │                             │
+  │                   │                              │    Request (msgpack rpc)    │
+  │                   │                              │<─────────────────────────────
+  │                   │                              │                             │
+  │                   │                              ────┐                         │
+  │                   │                                  │ Request enqueue         │
+  │                   │                              <───┘                         │
+  │                   │                              │                             │
+  │                   │     notify (method call)     │                             │
+  │                   │ <────────────────────────────│                             │
+  │                   │                              │                             │
+  │ notify (json rpc) │                              │                             │
+  │<───────────────────                              │                             │
+  │                   │                              │                             │
+  ────┐                                              │                             │
+      │ Request dequeue                              │                             │
+  <───┘                                              │                             │
+  │                   │                              │                             │
+  ────┐               │                              │                             │
+      │ Process       │                              │                             │
+  <───┘               │                              │                             │
+  │                   │                              │                             │
+  │                   │      Send response (msgpack rpc)                           │
+  │────────────────────────────────────────────────────────────────────────────────>
+┌─┴─┐            ┌────┴─────┐                  ┌─────┴─────┐                    ┌──┴───┐
+│VIM│            │VIM Server│                  │NVIM Server│                    │Client│
+└───┘            └──────────┘                  └───────────┘                    └──────┘
 ```
 
 ```plantuml
@@ -80,16 +85,16 @@ open a PR if you get any idea on improving it**.
 
 title "vim-hug-neovim-rpc - Sequence Diagram"
 
-
-VIM -> "VIM Server": Launch Thread
-VIM -> "NVIM Server": Launch Thread
-VIM -> "VIM Server": ch_open
+VIM -> "VIM Server": Launch thread
+VIM -> "NVIM Server": Launch thread
+VIM -> "VIM Server": `ch_open` connect
+"VIM Server" -> "VIM Server": Launch VimHandler thread
 
 Client-> "NVIM Server": Connect
-"NVIM Server" -> Receiver: Launch Thread
-Client -> Receiver: Request (msgpack rpc)
-Receiver -> Receiver: Request enqueue
-Receiver -> "VIM Server": notify (method call)
+"NVIM Server" -> "NVIM Server": Launch NvimHandler thread
+Client -> "NVIM Server": Request (msgpack rpc)
+"NVIM Server" -> "NVIM Server": Request enqueue
+"NVIM Server" -> "VIM Server": notify (method call)
 "VIM Server" -> VIM: notify (json rpc)
 VIM -> VIM: Request dequeue 
 VIM -> VIM: Process
