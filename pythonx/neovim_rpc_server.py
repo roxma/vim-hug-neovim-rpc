@@ -56,7 +56,7 @@ _channel_id_new._counter = 0
 _channel_id_new._lock = threading.Lock()
 
 
-class MainChannelHandler(socketserver.BaseRequestHandler):
+class VimChannelHandler(socketserver.BaseRequestHandler):
 
     _lock = threading.Lock()
     _sock = None
@@ -64,14 +64,14 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
     @classmethod
     def notify(cls,cmd="call neovim_rpc#_callback()"):
         try:
-            if not MainChannelHandler._sock:
+            if not VimChannelHandler._sock:
                 return
-            with MainChannelHandler._lock:
+            with VimChannelHandler._lock:
                 encoded = json.dumps(['ex', cmd])
                 logger.info("sending notification: %s",encoded)
-                MainChannelHandler._sock.send(encoded.encode('utf-8'))
+                VimChannelHandler._sock.send(encoded.encode('utf-8'))
         except Exception as ex:
-            logger.exception('MainChannelHandler notify exception for [%s]: %s', cmd, ex)
+            logger.exception('VimChannelHandler notify exception for [%s]: %s', cmd, ex)
 
     @classmethod
     def notify_exited(cls,channel):
@@ -108,7 +108,7 @@ class MainChannelHandler(socketserver.BaseRequestHandler):
             # Negative numbers are used for "eval" responses.
             if len(decoded)>=2 and  decoded[0] >= 0 and decoded[1] == 'neovim_rpc_setup':
 
-                MainChannelHandler._sock = self.request
+                VimChannelHandler._sock = self.request
 
                 # initial setup
                 encoded = json.dumps(['ex', "scall neovim_rpc#_callback()"])
@@ -132,7 +132,7 @@ class SocketToStream():
     def write(self,w):
         return self._sock.send(w)
 
-class TcpChannelHandler(socketserver.BaseRequestHandler):
+class Receiver(socketserver.BaseRequestHandler):
 
     channel_sockets = {}
 
@@ -143,7 +143,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
         channel = _channel_id_new()
 
         sock = self.request
-        TcpChannelHandler.channel_sockets[channel] = sock
+        Receiver.channel_sockets[channel] = sock
 
         try:
             f = SocketToStream(sock)
@@ -153,7 +153,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
                 request_queue.put((f,channel,unpacked))
                 # notify vim in order to process request in main thread, and
                 # avoiding the stupid json protocol
-                MainChannelHandler.notify()
+                VimChannelHandler.notify()
 
             logger.info('channel %s closed.', channel)
 
@@ -161,7 +161,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
             logger.exception('unpacker failed.')
         finally:
             try:
-                TcpChannelHandler.channel_sockets.pop(channel)
+                Receiver.channel_sockets.pop(channel)
                 sock.close()
             except:
                 pass
@@ -171,7 +171,7 @@ class TcpChannelHandler(socketserver.BaseRequestHandler):
         try:
             channel = int(channel)
             if channel not in cls.channel_sockets:
-                logger.info("channel[%s] not in TcpChannelHandler", channel)
+                logger.info("channel[%s] not in Receiver", channel)
                 return
             sock = cls.channel_sockets[channel]
             content = [2, event, args]
@@ -224,15 +224,15 @@ def start():
         pass
 
     # 0 for random port
-    global _server_main
-    global _server_clients
-    _server_main = ThreadedTCPServer(("127.0.0.1", 0), MainChannelHandler)
-    _server_clients = ThreadedTCPServer(("127.0.0.1", 0), TcpChannelHandler)
+    global _vim_server
+    global _nvim_server
+    _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimChannelHandler)
+    _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), Receiver)
 
     # Start a thread with the server -- that thread will then start one
     # more thread for each request
-    main_server_thread = threading.Thread(target=_server_main.serve_forever)
-    clients_server_thread = threading.Thread(target=_server_clients.serve_forever)
+    main_server_thread = threading.Thread(target=_vim_server.serve_forever)
+    clients_server_thread = threading.Thread(target=_nvim_server.serve_forever)
 
     # Exit the server thread when the main thread terminates
     main_server_thread.daemon = True
@@ -240,7 +240,7 @@ def start():
     clients_server_thread.daemon = True
     clients_server_thread.start()
 
-    return ["{addr[0]}:{addr[1]}".format(addr=_server_clients.server_address), "{addr[0]}:{addr[1]}".format(addr=_server_main.server_address)]
+    return ["{addr[0]}:{addr[1]}".format(addr=_nvim_server.server_address), "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)]
 
 def process_pending_requests():
 
@@ -326,15 +326,15 @@ def _process_request(channel,method,args):
         raise Exception('%s not implemented' % method)
 
 def rpcnotify(channel,method,args):
-    TcpChannelHandler.notify(channel,method,args)
+    Receiver.notify(channel,method,args)
 
 def stop():
 
     logger.info("stop begin")
 
     # close tcp channel server
-    _server_clients.shutdown()
-    _server_clients.server_close()
+    _nvim_server.shutdown()
+    _nvim_server.server_close()
 
     # close the main channel
     try:
@@ -343,17 +343,17 @@ def stop():
         logger.info("ch_close failed: %s", ex)
 
     # remove all sockets
-    TcpChannelHandler.shutdown()
+    Receiver.shutdown()
 
     try:
         # stop the main channel
-        _server_main.shutdown()
+        _vim_server.shutdown()
     except Exception as ex:
-        logger.info("_server_main shutodwn failed: %s", ex)
+        logger.info("_vim_server shutodwn failed: %s", ex)
 
     try:
-        _server_main.server_close()
+        _vim_server.server_close()
     except Exception as ex:
-        logger.info("_server_main close failed: %s", ex)
+        logger.info("_vim_server close failed: %s", ex)
 
 
