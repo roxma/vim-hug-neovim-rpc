@@ -80,7 +80,7 @@ open a PR if you get any idea on improving it**.
 └───┘            └──────────┘                  └───────────┘                    └──────┘
 ```
 
-```plantuml
+<!-- 
 @startuml
 
 title "vim-hug-neovim-rpc - Sequence Diagram"
@@ -101,7 +101,7 @@ VIM -> VIM: Process
 VIM -> Client: Send response (msgpack rpc)
 
 @enduml
-```
+-->
 
 ## Debugging
 
