@@ -22,6 +22,9 @@ open a PR if you get any idea on improving it**.
   install neovim`). There should be no error when you execute `:python import
   neovim` or `:python3 import neovim`
 
+Use `:echo neovim_rpc#serveraddr()` to test the installation. It should print
+something like `127.0.0.1:51359`.
+
 ## Overall Implementation
 
 ```
