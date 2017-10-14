@@ -12,6 +12,9 @@ benefits from this project. However, there're many neovim rpc methods I havn't
 implemented yet, which make this an experimental plugin. **Please fork and
 open a PR if you get any idea on improving it**.
 
+***Tip: for porting neovim rplugin to vim8, you might need
+[roxma/nvim-yarp](https://github.com/roxma/nvim-yarp)***
+
 ![screencast](https://cloud.githubusercontent.com/assets/4538941/23102626/9e1bd928-f6e7-11e6-8fa2-2776f70819d9.gif)
 
 ## Requirements
@@ -24,6 +27,23 @@ open a PR if you get any idea on improving it**.
 
 Use `:echo neovim_rpc#serveraddr()` to test the installation. It should print
 something like `127.0.0.1:51359`.
+
+## API
+
+| Function                                     | Similar to neovim's                            |
+| `neovim_rpc#serveraddr()`                    | `v:servername`                                 |
+| `neovim_rpc#jobstart(cmd,...)`               | `jobstart({cmd}[, {opts}])`                    |
+| `neovim_rpc#jobstop(jobid)`                  | `jobstop({job})`                               |
+| `neovim_rpc#rpcnotify(channel,event,...)`    | `rpcnotify({channel}, {event}[, {args}...])`   |
+| `neovim_rpc#rpcrequest(channel, event, ...)` | `rpcrequest({channel}, {method}[, {args}...])` |
+
+Note that `neovim_rpc#jobstart` only support these options:
+
+- `on_stdout`
+- `on_stderr`
+- `on_exit`
+- `detach`
+
 
 ## Overall Implementation
 
