@@ -92,9 +92,19 @@ func! neovim_rpc#rpcnotify(channel,event,...)
 	call neovim_rpc#pyxcall('neovim_rpc_server.rpcnotify',a:channel,a:event,a:000)
 endfunc
 
+let s:rspid = 1
 func! neovim_rpc#rpcrequest(channel, event, ...)
-    let [err, result] = ch_evalexpr(g:_neovim_rpc_main_channel, ['rpcrequest', a:channel, a:event, a:000])
+    let s:rspid = s:rspid + 1
+    " a unique key for storing response
+    let rspid = '' . s:rspid
+    call ch_evalexpr(g:_neovim_rpc_main_channel, ['rpcrequest', a:channel, a:event, a:000, rspid])
+	execute s:py ' import neovim_rpc_server, json'
+    let [err, result] = json_decode(s:pyeval('json.dumps(neovim_rpc_server.responses["' . rspid . '"])'))
+    execute s:py 'neovim_rpc_server.responses.pop("' . rspid . '")'
     if err
+        if type(err) == type('')
+            throw err
+        endif
         throw err[1]
     endif
     return result

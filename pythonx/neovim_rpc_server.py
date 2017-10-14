@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
 request_queue = Queue()
-
+responses = {}
 
 def _channel_id_new():
     with _channel_id_new._lock:
@@ -127,7 +127,13 @@ class VimHandler(socketserver.BaseRequestHandler):
                 channel = decoded[1][1]
                 event = decoded[1][2]
                 args = decoded[1][3]
-                NvimHandler.request(self.request, channel, reqid, event, args)
+                rspid = decoded[1][4]
+                NvimHandler.request(self.request, 
+                                    channel, 
+                                    reqid,
+                                    event,
+                                    args,
+                                    rspid)
 
                 # wait for response
 
@@ -172,10 +178,14 @@ class NvimHandler(socketserver.BaseRequestHandler):
                 if int(unpacked[0]) == 1:
                     unpacked = neovim_rpc_protocol.from_client(unpacked)
                     reqid = int(unpacked[1])
-                    vimsock = chinfo[reqid]
+                    rspid, vimsock = chinfo[reqid]
                     err = unpacked[2]
                     result = unpacked[3]
-                    content = [reqid, [err, result]]
+                    # VIM fails to parse response when there a sleep in neovim
+                    # client. I cannot figure out why. Use global responses to
+                    # workaround this issue.
+                    responses[rspid] = [err, result]
+                    content = [reqid, '']
                     tosend = json.dumps(content)
                     # vimsock.send
                     vimsock.send(tosend.encode('utf-8'))
@@ -221,7 +231,7 @@ class NvimHandler(socketserver.BaseRequestHandler):
             logger.exception("notify failed: %s", ex)
 
     @classmethod
-    def request(cls, vimsock, channel, reqid, event, args):
+    def request(cls, vimsock, channel, reqid, event, args, rspid):
         try:
             reqid = int(reqid)
             channel = int(channel)
@@ -239,7 +249,7 @@ class NvimHandler(socketserver.BaseRequestHandler):
             #   - msg[3] arguments
             content = [0, reqid, event, args]
 
-            chinfo[reqid] = vimsock
+            chinfo[reqid] = [rspid, vimsock]
 
             logger.info("request channel[%s]: %s", channel, content)
             packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
