@@ -66,6 +66,12 @@ def nvim_set_option(name, val):
 def nvim_command(cmd):
     vim.command(cmd)
 
+def nvim_get_current_win():
+    return vim.current.window
+
+def nvim_win_get_cursor(window):
+    return window.cursor
+
 # TODO
 def nvim_out_write(s):
     pass
