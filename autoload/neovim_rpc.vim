@@ -92,6 +92,14 @@ func! neovim_rpc#rpcnotify(channel,event,...)
 	call neovim_rpc#pyxcall('neovim_rpc_server.rpcnotify',a:channel,a:event,a:000)
 endfunc
 
+func! neovim_rpc#rpcrequest(channel, event, ...)
+    let [err, result] = ch_evalexpr(g:_neovim_rpc_main_channel, ['rpcrequest', a:channel, a:event, a:000])
+    if err
+        throw err[1]
+    endif
+    return result
+endfunc
+
 func! neovim_rpc#_on_stdout(job,data)
 	let l:jobid = ch_info(a:job)['id']
 	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']

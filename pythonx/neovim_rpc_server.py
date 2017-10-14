@@ -84,25 +84,31 @@ class VimHandler(socketserver.BaseRequestHandler):
     # each connection is a thread
     def handle(self):
         logger.info("=== socket opened ===")
+        data = None
         while True:
             try:
+                rcv = self.request.recv(4096)
                 # 16k buffer by default
-                data = self.request.recv(4096)
+                if data:
+                    data += rcv
+                else:
+                    data = rcv
             except socket.error:
                 logger.info("=== socket error ===")
                 break
             except IOError:
                 logger.info("=== socket closed ===")
                 break
-            if len(data) == 0:
+            if len(rcv) == 0:
                 logger.info("=== socket closed ===")
                 break
             logger.info("received: %s", data)
             try:
                 decoded = json.loads(data.decode('utf-8'))
             except ValueError:
-                logger.exception("json decoding failed")
-                decoded = [-1, '']
+                logger.exception("json decoding failed, wait for more data")
+                continue
+            data = None
 
             # Send a response if the sequence number is positive.
             # Negative numbers are used for "eval" responses.
@@ -116,8 +122,14 @@ class VimHandler(socketserver.BaseRequestHandler):
                 self.request.send(encoded.encode('utf-8'))
 
             else:
+                # recognize as rpcrequest
+                reqid = decoded[0]
+                channel = decoded[1][1]
+                event = decoded[1][2]
+                args = decoded[1][3]
+                NvimHandler.request(self.request, channel, reqid, event, args)
 
-                logger.error('unrecognized request, %s', decoded)
+                # wait for response
 
 class SocketToStream():
 
@@ -143,13 +155,34 @@ class NvimHandler(socketserver.BaseRequestHandler):
         channel = _channel_id_new()
 
         sock = self.request
-        NvimHandler.channel_sockets[channel] = sock
+        chinfo = dict(sock=sock)
+        NvimHandler.channel_sockets[channel] = chinfo
 
         try:
             f = SocketToStream(sock)
             unpacker = msgpack.Unpacker(f)
             for unpacked in unpacker:
                 logger.info("unpacked: %s", unpacked)
+
+                # response format:
+                #   - msg[0]: 1
+                #   - msg[1]: the request id
+                #   - msg[2]: error(if any), format: [code,str]
+                #   - msg[3]: result(if not errored)
+                if int(unpacked[0]) == 1:
+                    unpacked = neovim_rpc_protocol.from_client(unpacked)
+                    reqid = int(unpacked[1])
+                    vimsock = chinfo[reqid]
+                    err = unpacked[2]
+                    result = unpacked[3]
+                    content = [reqid, [err, result]]
+                    tosend = json.dumps(content)
+                    # vimsock.send
+                    vimsock.send(tosend.encode('utf-8'))
+                    chinfo.pop(reqid)
+                    continue
+
+
                 request_queue.put((f,channel,unpacked))
                 # notify vim in order to process request in main thread, and
                 # avoiding the stupid json protocol
@@ -173,8 +206,14 @@ class NvimHandler(socketserver.BaseRequestHandler):
             if channel not in cls.channel_sockets:
                 logger.info("channel[%s] not in NvimHandler", channel)
                 return
-            sock = cls.channel_sockets[channel]
+            sock = cls.channel_sockets[channel]['sock']
+
+            # notification format:
+            #   - msg[0] type, which is 2
+            #   - msg[1] method
+            #   - msg[2] arguments
             content = [2, event, args]
+
             logger.info("notify channel[%s]: %s", channel, content)
             packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
             sock.send(packed)
@@ -182,11 +221,39 @@ class NvimHandler(socketserver.BaseRequestHandler):
             logger.exception("notify failed: %s", ex)
 
     @classmethod
+    def request(cls, vimsock, channel, reqid, event, args):
+        try:
+            reqid = int(reqid)
+            channel = int(channel)
+            chinfo = cls.channel_sockets[channel]
+
+            if channel not in cls.channel_sockets:
+                logger.info("channel[%s] not in NvimHandler", channel)
+                return
+
+            sock = chinfo['sock']
+            # request format:
+            #   - msg[0] type, which is 0
+            #   - msg[1] request id
+            #   - msg[2] method
+            #   - msg[3] arguments
+            content = [0, reqid, event, args]
+
+            chinfo[reqid] = vimsock
+
+            logger.info("request channel[%s]: %s", channel, content)
+            packed = msgpack.packb(neovim_rpc_protocol.to_client(content))
+            sock.send(packed)
+        except Exception as ex:
+            logger.exception("request failed: %s", ex)
+
+    @classmethod
     def shutdown(cls):
         # close all sockets
         for channel in list(cls.channel_sockets.keys()):
-            sock = cls.channel_sockets.get(channel,None)
-            if sock:
+            chinfo = cls.channel_sockets.get(channel,None)
+            if chinfo:
+                sock = chinfo['sock']
                 logger.info("closing client %s", channel)
                 # if don't shutdown the socket, vim will never exit because the
                 # recv thread is still blocking
@@ -265,15 +332,9 @@ def process_pending_requests():
             #   - msg[3] arguments
 
             # notification format:
-            #   - msg[0] type, which is 0
+            #   - msg[0] type, which is 2
             #   - msg[1] method
             #   - msg[2] arguments
-
-            # response format:
-            #   - msg[0]: 1
-            #   - msg[1]: the request id
-            #   - msg[2]: error(if any), format: [code,str]
-            #   - msg[3]: result(if not errored)
 
             if msg[0] == 0:
                 #request
@@ -327,6 +388,7 @@ def _process_request(channel,method,args):
 
 def rpcnotify(channel,method,args):
     NvimHandler.notify(channel,method,args)
+
 
 def stop():
 
