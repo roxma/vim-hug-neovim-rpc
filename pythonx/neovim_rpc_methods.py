@@ -24,14 +24,14 @@ def nvim_buf_get_name(buffer):
     return nvim_call_function('bufname', [buffer.number])
 
 def nvim_get_var(name):
-    return vim.vars[name]
+    return json.loads(vim.eval('json_encode(g:' + name + ')'))
 
 def nvim_set_var(name,val):
     vim.vars[name] = val
     return val
 
 def nvim_buf_get_var(buffer,name):
-    return buffer.vars[name]
+    return json.loads(vim.eval('json_encode(getbufvar(%s, "%s"))' % (buffer.number, name)))
 
 def nvim_buf_set_var(buffer,name,val):
     buffer.vars[name] = val
@@ -65,3 +65,11 @@ def nvim_set_option(name, val):
 
 def nvim_command(cmd):
     vim.command(cmd)
+
+# TODO
+def nvim_out_write(s):
+    pass
+
+# TODO
+def nvim_err_write(s):
+    pass
