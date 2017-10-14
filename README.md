@@ -31,6 +31,7 @@ something like `127.0.0.1:51359`.
 ## API
 
 | Function                                     | Similar to neovim's                            |
+|----------------------------------------------|------------------------------------------------|
 | `neovim_rpc#serveraddr()`                    | `v:servername`                                 |
 | `neovim_rpc#jobstart(cmd,...)`               | `jobstart({cmd}[, {opts}])`                    |
 | `neovim_rpc#jobstop(jobid)`                  | `jobstop({job})`                               |
