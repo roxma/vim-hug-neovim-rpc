@@ -62,3 +62,6 @@ def nvim_get_option(name):
 
 def nvim_set_option(name, val):
     vim.options[name] = val
+
+def nvim_command(cmd):
+    vim.command(cmd)
