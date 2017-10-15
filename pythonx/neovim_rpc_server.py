@@ -310,8 +310,8 @@ def start():
 
     # Start a thread with the server -- that thread will then start one
     # more thread for each request
-    main_server_thread = threading.Thread(target=_vim_server.serve_forever, daemon=True)
-    clients_server_thread = threading.Thread(target=_nvim_server.serve_forever, daemon=True)
+    main_server_thread = threading.Thread(target=_vim_server.serve_forever)
+    clients_server_thread = threading.Thread(target=_nvim_server.serve_forever)
 
     # Exit the server thread when the main thread terminates
     main_server_thread.daemon = True
