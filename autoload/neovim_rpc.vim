@@ -16,7 +16,13 @@ func! neovim_rpc#serveraddr()
 		return g:_neovim_rpc_nvim_server
 	endif
 
-	execute s:py ' import neovim_rpc_server'
+    try
+        execute s:py . ' import neovim'
+    catch
+        throw 'vim-hug-neovim-rpc requires `:' . s:py . ' import neovim` command to work'
+    endtry
+
+	execute s:py . ' import neovim_rpc_server'
 	let l:servers = s:pyeval('neovim_rpc_server.start()')
 
 	let g:_neovim_rpc_nvim_server     = l:servers[0]
