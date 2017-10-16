@@ -103,12 +103,19 @@ endfunc
 let s:rspid = 1
 func! neovim_rpc#rpcrequest(channel, event, ...)
     let s:rspid = s:rspid + 1
+
     " a unique key for storing response
     let rspid = '' . s:rspid
-    call ch_evalexpr(g:_neovim_rpc_main_channel, ['rpcrequest', a:channel, a:event, a:000, rspid])
+
+    " neovim's rpcrequest doesn't have timeout
+    let opt = {'timeout': 24 * 60 * 60 * 1000}
+    let args = ['rpcrequest', a:channel, a:event, a:000, rspid]
+    call ch_evalexpr(g:_neovim_rpc_main_channel, args, opt)
+
+    let expr = 'json.dumps(neovim_rpc_server.responses.pop("' . rspid . '"))'
+
 	execute s:py ' import neovim_rpc_server, json'
-    let [err, result] = json_decode(s:pyeval('json.dumps(neovim_rpc_server.responses["' . rspid . '"])'))
-    execute s:py 'neovim_rpc_server.responses.pop("' . rspid . '")'
+    let [err, result] = json_decode(s:pyeval(expr))
     if err
         if type(err) == type('')
             throw err
