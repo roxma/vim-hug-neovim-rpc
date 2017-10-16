@@ -19,6 +19,8 @@ func! neovim_rpc#serveraddr()
     try
         execute s:py . ' import neovim'
     catch
+        call neovim_rpc#_error("failed executing: " . s:py . " import neovim")
+        call neovim_rpc#_error(v:exception)
         throw 'vim-hug-neovim-rpc requires `:' . s:py . ' import neovim` command to work'
     endtry
 
@@ -146,3 +148,9 @@ let g:_neovim_rpc_main_channel = -1
 let g:_neovim_rpc_jobs = {}
 
 let s:leaving = 0
+
+func! neovim_rpc#_error(msg)
+    echohl ErrorMsg
+    echom '[vim-hug-neovim-rpc] ' . a:msg
+    echohl None
+endfunc

@@ -17,6 +17,8 @@ import subprocess
 from neovim.api import common as neovim_common
 import neovim_rpc_protocol
 
+vim_error = vim.Function('neovim_rpc#_error')
+
 # protable devnull
 if sys.version_info.major==2:
     DEVNULL = open(os.devnull, 'wb')
@@ -396,6 +398,7 @@ def _process_request(channel,method,args):
         return getattr(neovim_rpc_methods,method)(*args)
     else:
         logger.error("method %s not implemented", method)
+        vim_error("rpc method [%s] not implemented in pythonx/neovim_rpc_methods.py. Please send PR or contact the mantainer." % method)
         raise Exception('%s not implemented' % method)
 
 def rpcnotify(channel,method,args):
