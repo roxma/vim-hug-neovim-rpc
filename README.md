@@ -25,7 +25,7 @@ open a PR if you get any idea on improving it**.
   install neovim`). There should be no error when you execute `:python import
   neovim` or `:python3 import neovim`
 
-Use `:echo neovim_rpc#serveraddr()` to test the installation. It should print
+***Use `:echo neovim_rpc#serveraddr()` to test the installation***. It should print
 something like `127.0.0.1:51359`.
 
 ## API
@@ -129,8 +129,13 @@ VIM -> Client: Send response (msgpack rpc)
 
 ## Debugging
 
-```sh
-NVIM_PYTHON_LOG_FILE=nvim.log NVIM_PYTHON_LOG_LEVEL=DEBUG vim
+Add logging settigns to your vimrc. Log files will be generated with prefix
+`/tmp/nvim_log`. An alternative is to export environment variables before
+starting vim/nvim.
+
+```vim
+let $NVIM_PYTHON_LOG_FILE="/tmp/nvim_log"
+let $NVIM_PYTHON_LOG_LEVEL="DEBUG"
 ```
 
 ## Known isues
