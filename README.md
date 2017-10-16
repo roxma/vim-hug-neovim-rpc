@@ -138,7 +138,3 @@ let $NVIM_PYTHON_LOG_FILE="/tmp/nvim_log"
 let $NVIM_PYTHON_LOG_LEVEL="DEBUG"
 ```
 
-## Known isues
-
-- [delay on vim8 exit](https://github.com/roxma/nvim-completion-manager/issues/52)
-
