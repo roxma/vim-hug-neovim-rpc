@@ -79,9 +79,7 @@ func! neovim_rpc#jobstart(cmd,...)
 	if has_key(l:opts,'on_stderr')
 		let l:real_opts['err_cb'] = function('neovim_rpc#_on_stderr')
 	endif
-	if has_key(l:opts,'on_exit')
-		let l:real_opts['exit_cb'] = function('neovim_rpc#_on_exit')
-	endif
+    let l:real_opts['exit_cb'] = function('neovim_rpc#_on_exit')
 
 	let l:job   = job_start(a:cmd, l:real_opts)
 	let l:jobid = ch_info(l:job)['id']
@@ -142,9 +140,11 @@ endfunc
 func! neovim_rpc#_on_exit(job,status)
 	let l:jobid = ch_info(a:job)['id']
 	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
-	" convert to neovim style function call
-	call call(l:opts['on_exit'],[l:jobid,a:status,'exit'],l:opts)
 	unlet g:_neovim_rpc_jobs[l:jobid]
+    if has_key(l:opts, 'on_exit')
+        " convert to neovim style function call
+        call call(l:opts['on_exit'],[l:jobid,a:status,'exit'],l:opts)
+    endif
 endfunc
 
 func! neovim_rpc#_callback()
