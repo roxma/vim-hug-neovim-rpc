@@ -16,12 +16,17 @@ func! neovim_rpc#serveraddr()
 		return g:_neovim_rpc_nvim_server
 	endif
 
+    " must be utf-8
+    if &encoding !=? "utf-8"
+        throw '[vim-hug-neovim-rpc] requires `:set encoding=utf-8`'
+    endif
+
     try
         execute s:py . ' import neovim'
     catch
         call neovim_rpc#_error("failed executing: " . s:py . " import neovim")
         call neovim_rpc#_error(v:exception)
-        throw 'vim-hug-neovim-rpc requires `:' . s:py . ' import neovim` command to work'
+        throw '[vim-hug-neovim-rpc] requires `:' . s:py . ' import neovim` command to work'
     endtry
 
 	execute s:py . ' import neovim_rpc_server'
