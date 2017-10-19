@@ -281,7 +281,7 @@ def _setup_logging(name):
         prefix = os.environ['NVIM_PYTHON_LOG_FILE'].strip()
         major_version = sys.version_info[0]
         logfile = '{}_py{}_{}'.format(prefix, major_version, name)
-        handler = logging.FileHandler(logfile, 'w')
+        handler = logging.FileHandler(logfile, 'w', encoding='utf-8')
         handler.formatter = logging.Formatter(
             '%(asctime)s [%(levelname)s @ '
             '%(filename)s:%(funcName)s:%(lineno)s] %(process)s - %(message)s')
