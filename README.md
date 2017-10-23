@@ -19,12 +19,21 @@ open a PR if you get any idea on improving it**.
 
 ## Requirements
 
-- vim8 with `has('python')` or `has('python3')`
-- installation of
-  [neovim/python-client](https://github.com/neovim/python-client). (`pip
-  install neovim`). There should be no error when you execute `:python import
-  neovim` or `:python3 import neovim`
-- `set encoding=utf-8` in your vimrc.
+
+1. vim8
+2. If `has('pythonx')` and `set pyxversion=3`
+    - same requirements as `4. has('python3')`
+2. Else if `has('pythonx')` and `set pyxversion=2`
+    - same requirements as `5. has('python')`
+4. Else if `has('python3')`
+  - [neovim/python-client](https://github.com/neovim/python-client). (`pip3
+      install neovim`). There should be no error when you execute `:python3
+      import neovim`
+5. Else if `has('python')`
+  - [neovim/python-client](https://github.com/neovim/python-client). (`pip
+      install neovim`). There should be no error when you execute `:python
+      import neovim`
+6. `set encoding=utf-8` in your vimrc.
 
 ***Use `:echo neovim_rpc#serveraddr()` to test the installation***. It should print
 something like `127.0.0.1:51359`.
