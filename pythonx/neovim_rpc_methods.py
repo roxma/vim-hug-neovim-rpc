@@ -21,7 +21,7 @@ def nvim_buf_get_number(buf):
     return buf.number
 
 def nvim_buf_get_name(buffer):
-    return nvim_call_function('bufname', [buffer.number])
+    return buffer.name
 
 def nvim_get_var(name):
     return json.loads(vim.eval('json_encode(g:' + name + ')'))
@@ -59,6 +59,9 @@ def buffer_line_count(buffer):
 
 def nvim_get_option(name):
     return vim.options[name]
+
+def nvim_buf_get_option(buf, name):
+    return buf.options[name]
 
 def nvim_set_option(name, val):
     vim.options[name] = val
