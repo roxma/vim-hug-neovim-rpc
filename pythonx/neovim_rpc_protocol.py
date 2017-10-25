@@ -47,6 +47,8 @@ def to_client(msg):
             return msgpack.ExtType(BUFFER_TYPE_ID, msgpack.packb(obj.number))
         if type(obj) == WINDOW_TYPE:
             return msgpack.ExtType(WINDOW_TYPE_ID, msgpack.packb(obj.number))
+        if type(obj) == vim.Function:
+            return obj.name
         return obj
     return walk(handler, msg)
 

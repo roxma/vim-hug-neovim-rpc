@@ -57,10 +57,10 @@ Note that `neovim_rpc#jobstart` only support these options:
 
 ## Incompatibility issues
 
-The following neovim-only API will be ignored
-
-- `nvim_buf_add_highlight`
-- `nvim_buf_clear_highlight`
+- Cannot pass `Funcref` object to python client. Pass function name instead.
+- The following neovim-only API will be ignored quietly:
+    - `nvim_buf_add_highlight`
+    - `nvim_buf_clear_highlight`
 
 ## Overall Implementation
 
