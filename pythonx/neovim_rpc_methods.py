@@ -8,7 +8,7 @@ def nvim_call_function(method,args):
     vim.vars['_neovim_rpc_tmp_args'] = args
     # vim.eval('getcurpos()') return an array of string, it should be an array
     # of int.  Use json_encode to workaround this
-    return json.loads(vim.eval('json_encode(call("%s",g:_neovim_rpc_tmp_args))' % method))
+    return vim.bindeval('call("%s",g:_neovim_rpc_tmp_args)' % method)
 
 def nvim_get_current_buf():
     return vim.current.buffer
@@ -24,7 +24,7 @@ def nvim_buf_get_name(buffer):
     return buffer.name
 
 def nvim_get_var(name):
-    return json.loads(vim.eval('json_encode(g:' + name + ')'))
+    return vim.vars[name]
 
 def nvim_set_var(name,val):
     vim.vars[name] = val

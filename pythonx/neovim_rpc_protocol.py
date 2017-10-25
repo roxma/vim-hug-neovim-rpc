@@ -11,13 +11,20 @@ import neovim_rpc_methods
 import threading
 import socket
 import time
-from neovim.api.common import walk, decode_if_bytes
+from neovim.api.common import decode_if_bytes
 
 BUFFER_TYPE = type(vim.current.buffer)
 BUFFER_TYPE_ID = neovim_rpc_server_api_info.API_INFO['types']['Buffer']['id']
 WINDOW_TYPE = type(vim.current.window)
 WINDOW_TYPE_ID = neovim_rpc_server_api_info.API_INFO['types']['Window']['id']
 
+def walk(fn, obj):
+    if type(obj) in [list, tuple, vim.List]:
+        return list(walk(fn, o) for o in obj)
+    if type(obj) in [dict, vim.Dictionary]:
+        return dict((walk(fn, k), walk(fn, v)) for k, v in
+                    obj.items())
+    return fn(obj)
 
 def from_client(msg):
 
