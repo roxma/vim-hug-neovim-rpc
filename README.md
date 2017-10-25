@@ -55,6 +55,12 @@ Note that `neovim_rpc#jobstart` only support these options:
 - `on_exit`
 - `detach`
 
+## Incompatibility issues
+
+The following neovim-only API will be ignored
+
+- `nvim_buf_add_highlight`
+- `nvim_buf_clear_highlight`
 
 ## Overall Implementation
 

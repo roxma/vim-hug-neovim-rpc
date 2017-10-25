@@ -82,3 +82,13 @@ def nvim_out_write(s):
 # TODO
 def nvim_err_write(s):
     pass
+
+# NOTE https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
+# TODO
+def nvim_buf_add_highlight(buf, src_id, *args):
+    return src_id
+
+# NOTE https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
+# TODO
+def nvim_buf_clear_highlight(*args):
+    pass
