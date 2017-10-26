@@ -34,6 +34,8 @@ def from_client(msg):
                 return vim.buffers[msgpack.unpackb(obj.data)]
             if obj.code == WINDOW_TYPE_ID:
                 return vim.windows[msgpack.unpackb(obj.data) - 1]
+        elif obj is None:
+            return ''
         if sys.version_info.major!=2:
             # python3 needs decode
             obj = decode_if_bytes(obj)

@@ -58,6 +58,8 @@ Note that `neovim_rpc#jobstart` only support these options:
 ## Incompatibility issues
 
 - Cannot pass `Funcref` object to python client. Pass function name instead.
+- Python `None` will be converted to `''` instead of `v:null` into vimscript.
+  See [vim#2246](https://github.com/vim/vim/issues/2246)
 - The following neovim-only API will be ignored quietly:
     - `nvim_buf_add_highlight`
     - `nvim_buf_clear_highlight`
