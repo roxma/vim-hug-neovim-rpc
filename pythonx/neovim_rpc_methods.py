@@ -57,6 +57,9 @@ def buffer_set_lines(buffer,start,end,err,lines):
 def buffer_line_count(buffer):
     return len(buffer)
 
+def nvim_buf_line_count(buffer):
+    return len(buffer)
+
 def nvim_get_option(name):
     return vim.options[name]
 
