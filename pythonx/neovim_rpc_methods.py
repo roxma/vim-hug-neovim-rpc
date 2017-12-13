@@ -37,22 +37,27 @@ def nvim_buf_set_var(buffer,name,val):
     buffer.vars[name] = val
 
 def nvim_buf_get_lines(buffer,start,end,*args):
-    if end==-1:
-        return buffer[start:]
+    if start < 0:
+        start = len(buffer) + 1 + start
+    if end < 0:
+        end = len(buffer) + 1 + end
     return buffer[start:end]
 
 def nvim_eval(expr):
     return nvim_call_function('eval',[expr])
 
-def buffer_set_lines(buffer,start,end,err,lines):
-    if end==-1:
-        buffer[start:] = lines
-    else:
-        buffer[start:end] = lines
+def nvim_buf_set_lines(buffer,start,end,err,lines):
+    if start < 0:
+        start = len(buffer) + 1 + start
+    if end < 0:
+        end = len(buffer) + 1 + end
+    buffer[start:end] = lines
 
     if nvim_call_function('bufwinnr',[buffer.number])!=-1:
         # vim needs' redraw to update the screen, it seems to be a bug
         vim.command('redraw')
+
+buffer_set_lines = nvim_buf_set_lines
 
 def buffer_line_count(buffer):
     return len(buffer)
