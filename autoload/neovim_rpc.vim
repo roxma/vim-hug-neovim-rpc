@@ -156,7 +156,26 @@ let g:_neovim_rpc_jobs = {}
 let s:leaving = 0
 
 func! neovim_rpc#_error(msg)
+    if mode() == 'i'
+        " NOTE: side effect, sorry, but this is necessary
+        set nosmd
+    endif
     echohl ErrorMsg
     echom '[vim-hug-neovim-rpc] ' . a:msg
     echohl None
+endfunc
+
+func! neovim_rpc#_nvim_err_write(msg)
+    if mode() == 'i'
+        " NOTE: side effect, sorry, but this is necessary
+        set nosmd
+    endif
+    echohl ErrorMsg
+    let g:error = a:msg
+    echom a:msg
+    echohl None
+endfunc
+
+func! neovim_rpc#_nvim_out_write(msg)
+    echom a:msg
 endfunc

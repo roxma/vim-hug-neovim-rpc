@@ -83,13 +83,11 @@ def nvim_get_current_win():
 def nvim_win_get_cursor(window):
     return window.cursor
 
-# TODO
 def nvim_out_write(s):
-    pass
+    nvim_call_function('neovim_rpc#_nvim_out_write', [s])
 
-# TODO
 def nvim_err_write(s):
-    pass
+    nvim_call_function('neovim_rpc#_nvim_err_write', [s])
 
 # NOTE https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
 # TODO
