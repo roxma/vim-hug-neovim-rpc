@@ -48,17 +48,11 @@ endfunc
 
 " elegant python function call wrapper
 func! neovim_rpc#pyxcall(func,...)
-	execute s:py . ' import vim'
-	execute s:py . ' import json'
-	let l:i = 1
-	let l:cnt = len(a:000)
-	let l:args = []
-	while l:i <= l:cnt
-		call add(l:args,'json.loads(vim.eval("json_encode(a:'.l:i.')"))')
-		let l:i += 1
-	endwhile
-	return s:pyeval(a:func . '(' . join(l:args,',') . ')')
-	" return l:args
+	execute s:py . ' import vim, json'
+    let g:neovim_rpc#_tmp_args = copy(a:000)
+	let l:ret = s:pyeval(a:func . '(*vim.vars["neovim_rpc#_tmp_args"])')
+    unlet g:neovim_rpc#_tmp_args
+    return l:ret
 endfunc
 
 " supported opt keys:
