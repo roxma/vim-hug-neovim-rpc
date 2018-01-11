@@ -83,6 +83,42 @@ def nvim_get_current_win():
 def nvim_win_get_cursor(window):
     return window.cursor
 
+def nvim_win_get_buf(window):
+    return window.buffer
+
+def nvim_win_get_width(window):
+    return window.width
+
+def nvim_win_set_width(window, width):
+    window.width = width
+
+def nvim_win_get_height(window):
+    return window.height
+
+def nvim_win_set_height(window, height):
+    window.height = height
+
+def nvim_win_get_var(window, name):
+    return window.vars[name]
+
+def nvim_win_set_var(window, name, val):
+    window.vars[name] = val
+
+def nvim_win_get_option(window, name):
+    return window.options[name]
+
+def nvim_win_set_option(window, name, val):
+    window.options[name] = val
+
+def nvim_win_get_position(window):
+    return (window.row, window.col)
+
+def nvim_win_get_number(window):
+    return window.number
+
+def nvim_win_is_valid(window):
+    return window.valid
+
 def nvim_out_write(s):
     nvim_call_function('neovim_rpc#_nvim_out_write', [s])
 
