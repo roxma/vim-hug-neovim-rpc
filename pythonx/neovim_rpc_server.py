@@ -368,7 +368,7 @@ def process_pending_requests():
                 logger.info("sending result: %s", result)
                 packed = msgpack.packb(neovim_rpc_protocol.to_client(result))
                 f.write(packed)
-                logger.info("sended")
+                logger.info("sent")
             if msg[0] == 2:
                 # notification
                 req_typed, method, args = msg
