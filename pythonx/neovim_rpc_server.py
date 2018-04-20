@@ -114,12 +114,12 @@ class VimHandler(socketserver.BaseRequestHandler):
 
             # Send a response if the sequence number is positive.
             # Negative numbers are used for "eval" responses.
-            if len(decoded)>=2 and  decoded[0] >= 0 and decoded[1] == 'neovim_rpc_setup':
+            if len(decoded)>=2 and decoded[0] >= 0 and decoded[1] == 'neovim_rpc_setup':
 
                 VimHandler._sock = self.request
 
                 # initial setup
-                encoded = json.dumps(['ex', "scall neovim_rpc#_callback()"])
+                encoded = json.dumps(['ex', "call neovim_rpc#_callback()"])
                 logger.info("sending {0}".format(encoded))
                 self.request.send(encoded.encode('utf-8'))
 
