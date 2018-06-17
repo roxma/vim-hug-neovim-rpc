@@ -35,7 +35,7 @@ func! neovim_rpc#serveraddr()
 	let g:_neovim_rpc_nvim_server     = l:servers[0]
 	let g:_neovim_rpc_vim_server = l:servers[1]
 
-	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_vim_server)
+	let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_vim_server, {'waittime': -1})
 
 	" close channel before vim exit
 	" au VimLeavePre *  let s:leaving = 1 | execute s:py . ' neovim_rpc_server.stop()'
