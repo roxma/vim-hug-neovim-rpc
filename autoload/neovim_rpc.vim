@@ -122,6 +122,9 @@ endfunc
 
 func! neovim_rpc#_on_stdout(job,data)
     let l:jobid = ch_info(a:job)['id']
+    if !has_key(g:_neovim_rpc_jobs, l:jobid)
+        return
+    endif
     let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
     " convert to neovim style function call
     call call(l:opts['on_stdout'],[l:jobid,split(a:data,"\n",1),'stdout'],l:opts)
@@ -129,6 +132,9 @@ endfunc
 
 func! neovim_rpc#_on_stderr(job,data)
     let l:jobid = ch_info(a:job)['id']
+    if !has_key(g:_neovim_rpc_jobs, l:jobid)
+        return
+    endif
     let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
     " convert to neovim style function call
     call call(l:opts['on_stderr'],[l:jobid,split(a:data,"\n",1),'stderr'],l:opts)
