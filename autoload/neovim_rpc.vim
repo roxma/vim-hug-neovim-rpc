@@ -67,6 +67,9 @@ func! neovim_rpc#jobstart(cmd,...)
 		let l:opts = a:1
 	endif
 
+    let l:opts['_close'] = 0
+    let l:opts['_exit'] = 0
+
 	let l:real_opts = {'mode': 'raw'}
 	if has_key(l:opts,'detach') && l:opts['detach']
 		let l:real_opts['stoponexit'] = ''
@@ -79,6 +82,7 @@ func! neovim_rpc#jobstart(cmd,...)
 		let l:real_opts['err_cb'] = function('neovim_rpc#_on_stderr')
 	endif
     let l:real_opts['exit_cb'] = function('neovim_rpc#_on_exit')
+    let l:real_opts['close_cb'] = function('neovim_rpc#_on_close')
 
 	let l:job   = job_start(a:cmd, l:real_opts)
 	let l:jobid = ch_info(l:job)['id']
@@ -139,10 +143,24 @@ endfunc
 func! neovim_rpc#_on_exit(job,status)
 	let l:jobid = ch_info(a:job)['id']
 	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
-	unlet g:_neovim_rpc_jobs[l:jobid]
+    let l:opts['_exit'] = 1
+    " cleanup when both close_cb and exit_cb is called
+    if l:opts['_close'] && l:opts['_exit']
+        unlet g:_neovim_rpc_jobs[l:jobid]
+    endif
     if has_key(l:opts, 'on_exit')
         " convert to neovim style function call
         call call(l:opts['on_exit'],[l:jobid,a:status,'exit'],l:opts)
+    endif
+endfunc
+
+func! neovim_rpc#_on_close(job)
+	let l:jobid = ch_info(a:job)['id']
+	let l:opts = g:_neovim_rpc_jobs[l:jobid]['opts']
+    let l:opts['_close'] = 1
+    " cleanup when both close_cb and exit_cb is called
+    if l:opts['_close'] && l:opts['_exit']
+        unlet g:_neovim_rpc_jobs[l:jobid]
     endif
 endfunc
 
