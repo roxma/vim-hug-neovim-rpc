@@ -390,10 +390,9 @@ def process_pending_requests():
                 break
 
 def _process_request(channel,method,args):
-    if method=='vim_get_api_info':
-        # this is the first request send from neovim client
-        api_info = neovim_rpc_server_api_info.API_INFO
-        return [channel,api_info]
+    if method in ['vim_get_api_info', 'nvim_get_api_info']:
+        # the first request sent by neovim python client
+        return [channel, neovim_rpc_server_api_info.API_INFO]
     if hasattr(neovim_rpc_methods,method):
         return getattr(neovim_rpc_methods,method)(*args)
     else:
