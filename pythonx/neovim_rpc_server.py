@@ -301,21 +301,41 @@ def _setup_logging(name):
                 level = l
         logger.setLevel(level)
 
+class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    pass
+
+if sys.platform in ['linux', 'darwin']:
+    class ThreadedUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+        pass
+    has_unix = True
+else:
+    has_unix = False
 
 def start():
 
     _setup_logging('neovim_rpc_server')
 
-    class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-        pass
-
     # 0 for random port
     global _vim_server
     global _nvim_server
-    _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
-    _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
-    _vim_server.daemon_threads = True
-    _nvim_server.daemon_threads = True
+
+    if not has_unix:
+        _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
+        _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
+        _vim_server.daemon_threads = True
+        _nvim_server.daemon_threads = True
+
+        nvim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_nvim_server.server_address)
+        vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
+    else:
+        nvim_server_addr = vim.eval('tempname()')
+
+        _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
+        _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
+        _vim_server.daemon_threads = True
+        _nvim_server.daemon_threads = True
+
+        vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
 
     # Start a thread with the server -- that thread will then start one
     # more thread for each request
@@ -328,7 +348,7 @@ def start():
     clients_server_thread.daemon = True
     clients_server_thread.start()
 
-    return ["{addr[0]}:{addr[1]}".format(addr=_nvim_server.server_address), "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)]
+    return [nvim_server_addr, vim_server_addr]
 
 
 def process_pending_requests():
