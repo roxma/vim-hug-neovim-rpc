@@ -389,12 +389,12 @@ def process_pending_requests():
                 # item==None means the queue is empty
                 break
 
-def _process_request(channel,method,args):
-    if method in ['vim_get_api_info', 'nvim_get_api_info']:
+def _process_request(channel, method, args):
+    if hasattr(neovim_rpc_methods, method):
+        return getattr(neovim_rpc_methods, method)(*args)
+    elif method in ['vim_get_api_info', 'nvim_get_api_info']:
         # the first request sent by neovim python client
         return [channel, neovim_rpc_server_api_info.API_INFO]
-    if hasattr(neovim_rpc_methods,method):
-        return getattr(neovim_rpc_methods,method)(*args)
     else:
         logger.error("method %s not implemented", method)
         vim_error("rpc method [%s] not implemented in pythonx/neovim_rpc_methods.py. Please send PR or contact the mantainer." % method)
