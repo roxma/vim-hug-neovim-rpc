@@ -26,22 +26,34 @@ def walk(fn, obj):
                     obj.items())
     return fn(obj)
 
-def from_client(msg):
-
-    def handler(obj):
-        if type(obj) is msgpack.ExtType:
-            if obj.code == BUFFER_TYPE_ID:
-                return vim.buffers[msgpack.unpackb(obj.data)]
-            if obj.code == WINDOW_TYPE_ID:
-                return vim.windows[msgpack.unpackb(obj.data) - 1]
-        elif obj is None:
-            return ''
-        if sys.version_info.major!=2:
-            # python3 needs decode
-            obj = decode_if_bytes(obj)
-        return obj
-
-    return walk(handler,msg)
+if vim.eval("has('patch-8.0.1280')"):
+    def from_client(msg):
+        def handler(obj):
+            if type(obj) is msgpack.ExtType:
+                if obj.code == BUFFER_TYPE_ID:
+                    return vim.buffers[msgpack.unpackb(obj.data)]
+                if obj.code == WINDOW_TYPE_ID:
+                    return vim.windows[msgpack.unpackb(obj.data) - 1]
+            if sys.version_info.major!=2:
+                # python3 needs decode
+                obj = decode_if_bytes(obj)
+            return obj
+        return walk(handler,msg)
+else:
+    def from_client(msg):
+        def handler(obj):
+            if type(obj) is msgpack.ExtType:
+                if obj.code == BUFFER_TYPE_ID:
+                    return vim.buffers[msgpack.unpackb(obj.data)]
+                if obj.code == WINDOW_TYPE_ID:
+                    return vim.windows[msgpack.unpackb(obj.data) - 1]
+            elif obj is None:
+                return ''
+            if sys.version_info.major!=2:
+                # python3 needs decode
+                obj = decode_if_bytes(obj)
+            return obj
+        return walk(handler,msg)
 
 def to_client(msg):
     def handler( obj):
