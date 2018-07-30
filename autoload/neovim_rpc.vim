@@ -113,10 +113,10 @@ func! neovim_rpc#rpcrequest(channel, event, ...)
     let args = ['rpcrequest', a:channel, a:event, a:000, rspid]
     call ch_evalexpr(g:_neovim_rpc_main_channel, args, opt)
 
-    let expr = 'json.dumps(neovim_rpc_server.responses.pop("' . rspid . '"))'
+    let expr = 'neovim_rpc_server.responses.pop("' . rspid . '")'
 
     execute s:py ' import neovim_rpc_server, json'
-    let [err, result] = json_decode(s:pyeval(expr))
+    let [err, result] = s:pyeval(expr)
     if err
         if type(err) == type('')
             throw err
