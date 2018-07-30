@@ -31,7 +31,7 @@ def nvim_set_var(name,val):
     return val
 
 def nvim_buf_get_var(buffer,name):
-    return json.loads(vim.eval('json_encode(getbufvar(%s, "%s"))' % (buffer.number, name)))
+    return buffer.vars[name]
 
 def nvim_buf_set_var(buffer,name,val):
     buffer.vars[name] = val
