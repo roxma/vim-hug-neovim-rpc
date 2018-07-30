@@ -18,6 +18,7 @@ from neovim.api import common as neovim_common
 import neovim_rpc_protocol
 
 vim_error = vim.Function('neovim_rpc#_error')
+vim_py = vim.eval('g:neovim_rpc#py')
 
 # protable devnull
 if sys.version_info.major == 2:
@@ -67,8 +68,10 @@ class VimHandler(socketserver.BaseRequestHandler):
     _sock = None
 
     @classmethod
-    def notify(cls, cmd="call neovim_rpc#_callback()"):
+    def notify(cls, cmd=None):
         try:
+            if cmd is None:
+                 cmd = vim_py + " neovim_rpc_server.process_pending_requests()"
             if not VimHandler._sock:
                 return
             with VimHandler._lock:
@@ -82,8 +85,7 @@ class VimHandler(socketserver.BaseRequestHandler):
     @classmethod
     def notify_exited(cls, channel):
         try:
-            cmd = "call neovim_rpc#_on_exit(%s)" % channel
-            cls.notify(cmd)
+            cls.notify("call neovim_rpc#_on_exit(%s)" % channel)
         except Exception as ex:
             logger.exception(
                 'notify_exited for channel [%s] exception: %s', channel, ex)
@@ -141,9 +143,6 @@ class VimHandler(socketserver.BaseRequestHandler):
                                     event,
                                     args,
                                     rspid)
-
-                # wait for response
-
 
 class SocketToStream():
 
@@ -301,8 +300,10 @@ def _setup_logging(name):
                 level = l
         logger.setLevel(level)
 
+
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
+
 
 if sys.platform in ['linux', 'darwin']:
     class ThreadedUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
@@ -310,6 +311,7 @@ if sys.platform in ['linux', 'darwin']:
     has_unix = True
 else:
     has_unix = False
+
 
 def start():
 
@@ -321,7 +323,8 @@ def start():
 
     _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
     _vim_server.daemon_threads = True
-    vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
+    vim_server_addr = "{addr[0]}:{addr[1]}".format(
+        addr=_vim_server.server_address)
 
     if 'NVIM_LISTEN_ADDRESS' in os.environ:
         nvim_server_addr = os.environ['NVIM_LISTEN_ADDRESS']
@@ -338,7 +341,8 @@ def start():
             _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
     elif not has_unix:
         _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
-        nvim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_nvim_server.server_address)
+        nvim_server_addr = "{addr[0]}:{addr[1]}".format(
+            addr=_nvim_server.server_address)
     else:
         nvim_server_addr = vim.eval('tempname()')
         _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)

@@ -162,16 +162,14 @@ def nvim_out_write(s):
 def nvim_err_write(s):
     nvim_call_function('neovim_rpc#_nvim_err_write', [s])
 
-# NOTE https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
-# TODO
-
 
 def nvim_buf_add_highlight(buf, src_id, *args):
+    # https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
+    # FIXME
     return src_id
-
-# NOTE https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
-# TODO
 
 
 def nvim_buf_clear_highlight(*args):
+    # https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
+    # FIXME
     pass

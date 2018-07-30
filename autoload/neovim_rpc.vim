@@ -1,44 +1,45 @@
 
-
 if has('pythonx')
-    let s:py = 'pythonx'
+    let g:neovim_rpc#py = 'pythonx'
     let s:pyeval = function('pyxeval')
 elseif has('python3')
-    let s:py = 'python3'
+    let g:neovim_rpc#py = 'python3'
     let s:pyeval = function('py3eval')
 else
-    let s:py = 'python'
+    let g:neovim_rpc#py = 'python'
     let s:pyeval = function('pyeval')
 endif
+
+func! s:py(cmd)
+    execute g:neovim_rpc#py a:cmd
+endfunc
 
 func! neovim_rpc#serveraddr()
     if exists('g:_neovim_rpc_nvim_server')
         return g:_neovim_rpc_nvim_server
     endif
 
-    " must be utf-8
     if &encoding !=? "utf-8"
         throw '[vim-hug-neovim-rpc] requires `:set encoding=utf-8`'
     endif
 
     try
-        execute s:py . ' import neovim'
+        call s:py('import neovim')
     catch
-        call neovim_rpc#_error("failed executing: " . s:py . " import neovim")
+        call neovim_rpc#_error("failed executing: " .
+                    \ g:neovim_rpc#py . " import neovim")
         call neovim_rpc#_error(v:exception)
-        throw '[vim-hug-neovim-rpc] requires `:' . s:py . ' import neovim` command to work'
+        throw '[vim-hug-neovim-rpc] requires `:' . g:neovim_rpc#py .
+                    \ ' import neovim` command to work'
     endtry
 
-    execute s:py . ' import neovim_rpc_server'
+    call s:py('import neovim_rpc_server')
     let l:servers = s:pyeval('neovim_rpc_server.start()')
 
     let g:_neovim_rpc_nvim_server     = l:servers[0]
     let g:_neovim_rpc_vim_server = l:servers[1]
 
     let g:_neovim_rpc_main_channel = ch_open(g:_neovim_rpc_vim_server)
-
-    " close channel before vim exit
-    " au VimLeavePre *  let s:leaving = 1 | execute s:py . ' neovim_rpc_server.stop()'
 
     " identify myself
     call ch_sendexpr(g:_neovim_rpc_main_channel,'neovim_rpc_setup')
@@ -48,7 +49,7 @@ endfunc
 
 " elegant python function call wrapper
 func! neovim_rpc#pyxcall(func,...)
-    execute s:py . ' import vim, json'
+    call s:py('import vim, json')
     let g:neovim_rpc#_tmp_args = copy(a:000)
     let l:ret = s:pyeval(a:func . '(*vim.vars["neovim_rpc#_tmp_args"])')
     unlet g:neovim_rpc#_tmp_args
@@ -115,7 +116,7 @@ func! neovim_rpc#rpcrequest(channel, event, ...)
 
     let expr = 'neovim_rpc_server.responses.pop("' . rspid . '")'
 
-    execute s:py ' import neovim_rpc_server, json'
+    call s:py('import neovim_rpc_server, json')
     let [err, result] = s:pyeval(expr)
     if err
         if type(err) == type('')
@@ -165,7 +166,7 @@ func! neovim_rpc#_on_close(job)
 endfunc
 
 func! neovim_rpc#_callback()
-    execute s:py . ' neovim_rpc_server.process_pending_requests()'
+    execute g:neovim_rpc#py . ' neovim_rpc_server.process_pending_requests()'
 endfunc
 
 let g:_neovim_rpc_main_channel = -1
