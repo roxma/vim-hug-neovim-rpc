@@ -319,23 +319,30 @@ def start():
     global _vim_server
     global _nvim_server
 
-    if not has_unix:
-        _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
-        _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
-        _vim_server.daemon_threads = True
-        _nvim_server.daemon_threads = True
+    _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
+    _vim_server.daemon_threads = True
+    vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
 
+    if 'NVIM_LISTEN_ADDRESS' in os.environ:
+        nvim_server_addr = os.environ['NVIM_LISTEN_ADDRESS']
+        if nvim_server_addr.find(':') >= 0:
+            host, port = nvim_server_addr.split(':')
+            port = int(port)
+            _nvim_server = ThreadedTCPServer((host, port), NvimHandler)
+        else:
+            if os.path.exists(nvim_server_addr):
+                try:
+                    os.unlink(nvim_server_addr)
+                except:
+                    pass
+            _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
+    elif not has_unix:
+        _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
         nvim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_nvim_server.server_address)
-        vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
     else:
         nvim_server_addr = vim.eval('tempname()')
-
-        _vim_server = ThreadedTCPServer(("127.0.0.1", 0), VimHandler)
         _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
-        _vim_server.daemon_threads = True
-        _nvim_server.daemon_threads = True
-
-        vim_server_addr = "{addr[0]}:{addr[1]}".format(addr=_vim_server.server_address)
+    _nvim_server.daemon_threads = True
 
     # Start a thread with the server -- that thread will then start one
     # more thread for each request
