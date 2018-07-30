@@ -1,5 +1,3 @@
-
-
 # result of neovim `api_info()`
 API_INFO = {
     "version": {
