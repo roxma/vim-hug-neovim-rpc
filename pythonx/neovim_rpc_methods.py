@@ -95,6 +95,10 @@ def nvim_set_option(name, val):
     vim.options[name] = val
 
 
+def nvim_buf_set_option(buf, name, val):
+    buf.options[name] = val
+
+
 def nvim_command(cmd):
     vim.command(cmd)
 
