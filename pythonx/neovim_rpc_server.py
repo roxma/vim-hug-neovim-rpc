@@ -17,12 +17,6 @@ import neovim_rpc_protocol
 vim_error = vim.Function('neovim_rpc#_error')
 vim_py = vim.eval('g:neovim_rpc#py')
 
-# protable devnull
-if sys.version_info.major == 2:
-    DEVNULL = open(os.devnull, 'wb')
-else:
-    from subprocess import DEVNULL
-
 
 if sys.version_info.major == 2:
     from Queue import Queue, Empty as QueueEmpty
