@@ -18,8 +18,6 @@ def nvim_get_current_buf():
 def nvim_list_bufs():
     return list(vim.buffers)
 
-# {'return_type': 'Integer', 'since': 1, 'method': True, 'parameters': [['Buffer', 'buffer']], 'name': 'nvim_buf_get_number'}
-
 
 def nvim_buf_get_number(buf):
     return buf.number

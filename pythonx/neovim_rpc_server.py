@@ -10,8 +10,6 @@ import logging
 import msgpack
 import neovim_rpc_server_api_info
 import neovim_rpc_methods
-import threading
-import socket
 import neovim_rpc_protocol
 
 vim_error = vim.Function('neovim_rpc#_error')
@@ -62,7 +60,7 @@ class VimHandler(socketserver.BaseRequestHandler):
     def notify(cls, cmd=None):
         try:
             if cmd is None:
-                 cmd = vim_py + " neovim_rpc_server.process_pending_requests()"
+                cmd = vim_py + " neovim_rpc_server.process_pending_requests()"
             if not VimHandler._sock:
                 return
             with VimHandler._lock:
@@ -112,7 +110,8 @@ class VimHandler(socketserver.BaseRequestHandler):
 
             # Send a response if the sequence number is positive.
             # Negative numbers are used for "eval" responses.
-            if len(decoded) >= 2 and decoded[0] >= 0 and decoded[1] == 'neovim_rpc_setup':
+            if (len(decoded) >= 2 and decoded[0] >= 0 and
+                    decoded[1] == 'neovim_rpc_setup'):
 
                 VimHandler._sock = self.request
 
@@ -134,6 +133,7 @@ class VimHandler(socketserver.BaseRequestHandler):
                                     event,
                                     args,
                                     rspid)
+
 
 class SocketToStream():
 
@@ -198,13 +198,13 @@ class NvimHandler(socketserver.BaseRequestHandler):
 
             logger.info('channel %s closed.', channel)
 
-        except:
+        except Exception:
             logger.exception('unpacker failed.')
         finally:
             try:
                 NvimHandler.channel_sockets.pop(channel)
                 sock.close()
-            except:
+            except Exception:
                 pass
 
     @classmethod
@@ -284,11 +284,11 @@ def _setup_logging(name):
         logging.root.addHandler(handler)
         level = logging.INFO
         if 'NVIM_PYTHON_LOG_LEVEL' in os.environ:
-            l = getattr(logging,
-                        os.environ['NVIM_PYTHON_LOG_LEVEL'].strip(),
-                        level)
-            if isinstance(l, int):
-                level = l
+            lv = getattr(logging,
+                         os.environ['NVIM_PYTHON_LOG_LEVEL'].strip(),
+                         level)
+            if isinstance(lv, int):
+                level = lv
         logger.setLevel(level)
 
 
@@ -297,7 +297,8 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 if sys.platform in ['linux', 'darwin']:
-    class ThreadedUnixServer(socketserver.ThreadingMixIn, socketserver.UnixStreamServer):
+    class ThreadedUnixServer(socketserver.ThreadingMixIn,
+                             socketserver.UnixStreamServer):
         pass
     has_unix = True
 else:
@@ -327,7 +328,7 @@ def start():
             if os.path.exists(nvim_server_addr):
                 try:
                     os.unlink(nvim_server_addr)
-                except:
+                except Exception:
                     pass
             _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
     elif not has_unix:
@@ -408,7 +409,7 @@ def process_pending_requests():
                 except Exception as ex:
                     logger.exception("process failed: %s", ex)
 
-        except QueueEmpty as em:
+        except QueueEmpty:
             pass
         except Exception as ex:
             logger.exception("exception during process: %s", ex)
@@ -429,7 +430,9 @@ def _process_request(channel, method, args):
     else:
         logger.error("method %s not implemented", method)
         vim_error(
-            "rpc method [%s] not implemented in pythonx/neovim_rpc_methods.py. Please send PR or contact the mantainer." % method)
+            "rpc method [%s] not implemented in "
+            "pythonx/neovim_rpc_methods.py. "
+            "Please send PR or contact the mantainer." % method)
         raise Exception('%s not implemented' % method)
 
 
