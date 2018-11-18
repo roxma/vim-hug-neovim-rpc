@@ -1,7 +1,5 @@
 # vim:set et sw=4 ts=8:
 import vim
-import json
-import msgpack
 
 # vim's python binding doesn't have the `call` method, wrap it here
 

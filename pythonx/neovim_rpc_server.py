@@ -12,8 +12,6 @@ import neovim_rpc_server_api_info
 import neovim_rpc_methods
 import threading
 import socket
-import time
-import subprocess
 import neovim_rpc_protocol
 
 vim_error = vim.Function('neovim_rpc#_error')
