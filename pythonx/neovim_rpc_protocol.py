@@ -1,16 +1,7 @@
-import json
-import socket
 import sys
-import os
-import threading
 import vim
-import logging
 import msgpack
 import neovim_rpc_server_api_info
-import neovim_rpc_methods
-import threading
-import socket
-import time
 from neovim.api.common import decode_if_bytes
 
 BUFFER_TYPE = type(vim.current.buffer)
