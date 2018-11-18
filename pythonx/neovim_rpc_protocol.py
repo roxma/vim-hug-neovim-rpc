@@ -2,12 +2,17 @@ import sys
 import vim
 import msgpack
 import neovim_rpc_server_api_info
-from neovim.api import decode_if_bytes
 
 BUFFER_TYPE = type(vim.current.buffer)
 BUFFER_TYPE_ID = neovim_rpc_server_api_info.API_INFO['types']['Buffer']['id']
 WINDOW_TYPE = type(vim.current.window)
 WINDOW_TYPE_ID = neovim_rpc_server_api_info.API_INFO['types']['Window']['id']
+
+
+def decode_if_bytes(obj):
+    if isinstance(obj, bytes):
+        return obj.decode("utf-8")
+    return obj
 
 
 def walk(fn, obj):
