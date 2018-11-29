@@ -61,6 +61,9 @@ def to_client(msg):
         if type(obj) == WINDOW_TYPE:
             return msgpack.ExtType(WINDOW_TYPE_ID, msgpack.packb(obj.number))
         if type(obj) == vim.Function:
-            return obj.name
+            try:
+                return obj.name.encode()
+            except Exception:
+                return ""
         return obj
     return walk(handler, msg)
