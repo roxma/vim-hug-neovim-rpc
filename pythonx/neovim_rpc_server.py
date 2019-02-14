@@ -324,13 +324,18 @@ def start():
             host, port = nvim_server_addr.split(':')
             port = int(port)
             _nvim_server = ThreadedTCPServer((host, port), NvimHandler)
-        else:
+        elif has_unix:
             if os.path.exists(nvim_server_addr):
                 try:
                     os.unlink(nvim_server_addr)
                 except Exception:
                     pass
             _nvim_server = ThreadedUnixServer(nvim_server_addr, NvimHandler)
+        else:
+            # FIXME named pipe server ?
+            _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
+            nvim_server_addr = "{addr[0]}:{addr[1]}".format(
+                addr=_nvim_server.server_address)
     elif not has_unix:
         _nvim_server = ThreadedTCPServer(("127.0.0.1", 0), NvimHandler)
         nvim_server_addr = "{addr[0]}:{addr[1]}".format(
