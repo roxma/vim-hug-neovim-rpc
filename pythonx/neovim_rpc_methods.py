@@ -31,6 +31,10 @@ def nvim_get_var(name):
     return vim.vars[name]
 
 
+def nvim_get_vvar(name):
+    return vim.vvars[name]
+
+
 def nvim_set_var(name, val):
     vim.vars[name] = val
     return val
