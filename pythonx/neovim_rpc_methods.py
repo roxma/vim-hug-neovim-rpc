@@ -103,6 +103,10 @@ def nvim_command(cmd):
     vim.command(cmd)
 
 
+def nvim_get_current_line():
+    return vim.current.line
+
+
 def nvim_get_current_win():
     return vim.current.window
 
