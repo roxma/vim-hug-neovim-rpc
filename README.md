@@ -29,12 +29,14 @@ open a PR if you get any idea on improving it**.
     - [pynvim](https://github.com/neovim/pynvim)
     - Pynvim is normally installed by `:py3 import pip; pip.main(['install',
         '--user', 'pynvim'])` or `python3 -m pip install pynvim`.
-    - There should be no error when you execute `:python3 import pynvim`
+    - There should be no error for at least one of `:python3 import pynvim` and
+        `:python3 import neovim`
 5. Else if `has('python')`
     - [pynvim](https://github.com/neovim/pynvim)
     - Pynvim is normally installed by `:py import pip; pip.main(['install',
         '--user', 'pynvim'])` or `python2 -m pip install pynvim`.
-    - There should be no error when you execute `:python import pynvim`
+    - There should be no error for at least one of `:python3 import pynvim` and
+        `:python3 import neovim`
 6. `set encoding=utf-8` in your vimrc.
 
 ***Use `:echo neovim_rpc#serveraddr()` to test the installation***. It should print
