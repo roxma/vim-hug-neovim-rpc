@@ -26,11 +26,15 @@ func! neovim_rpc#serveraddr()
     try
         call s:py('import pynvim')
     catch
-        call neovim_rpc#_error("failed executing: " .
-                    \ g:neovim_rpc#py . " import pynvim")
-        call neovim_rpc#_error(v:exception)
-        throw '[vim-hug-neovim-rpc] requires `:' . g:neovim_rpc#py .
-                    \ ' import pynvim` command to work'
+        try
+            call s:py('import neovim')
+        catch
+            call neovim_rpc#_error("failed executing: " .
+                        \ g:neovim_rpc#py . " import [pynvim|neovim]")
+            call neovim_rpc#_error(v:exception)
+            throw '[vim-hug-neovim-rpc] requires one of `:' . g:neovim_rpc#py .
+                        \ ' import [pynvim|neovim]` command to work'
+        endtry
     endtry
 
     call s:py('import neovim_rpc_server')
