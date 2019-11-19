@@ -181,3 +181,14 @@ def nvim_buf_clear_highlight(*args):
     # https://github.com/autozimu/LanguageClient-neovim/pull/151#issuecomment-339198527
     # FIXME
     pass
+
+
+def nvim_set_client_info(*args):
+    # https://github.com/roxma/vim-hug-neovim-rpc/issues/61
+    vim.vars['_neovim_rpc_client_info'] = args
+
+
+def nvim_get_client_info():
+    if '_neovim_rpc_client_info' not in vim.vars:
+        return []
+    return vim.vars['_neovim_rpc_client_info']
