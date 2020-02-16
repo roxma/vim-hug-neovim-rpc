@@ -38,6 +38,8 @@ open a PR if you get any idea on improving it**.
     - There should be no error for at least one of `:python3 import pynvim` and
         `:python3 import neovim`
 6. `set encoding=utf-8` in your vimrc.
+7. `g:neovim_rpc#py` pointed to your python3 executable, or `echo
+exepath('python3')` is not empty.
 
 ***Use `:echo neovim_rpc#serveraddr()` to test the installation***. It should print
 something like `127.0.0.1:51359` or `/tmp/vmrUX9X/2`.

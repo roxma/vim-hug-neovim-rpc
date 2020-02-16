@@ -1,12 +1,18 @@
 
 if has('pythonx')
-    let g:neovim_rpc#py = 'pythonx'
+    if !exists('g:neovim_rpc#py')
+        let g:neovim_rpc#py = 'pythonx'
+    endif
     let s:pyeval = function('pyxeval')
 elseif has('python3')
-    let g:neovim_rpc#py = 'python3'
+    if !exists('g:neovim_rpc#py')
+        let g:neovim_rpc#py = 'python3'
+    endif
     let s:pyeval = function('py3eval')
 else
-    let g:neovim_rpc#py = 'python'
+    if !exists('g:neovim_rpc#py')
+        let g:neovim_rpc#py = 'python'
+    endif
     let s:pyeval = function('pyeval')
 endif
 
