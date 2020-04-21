@@ -222,6 +222,22 @@ API_INFO = {
         },
         {
             "method": True,
+            "name": "nvim_buf_get_mark",
+            "return_type": "ArrayOf(Integer, 2)",
+            "parameters": [
+                [
+                    "Buffer",
+                    "buffer"
+                ],
+                [
+                    "String",
+                    "name"
+                ]
+            ],
+            "since": 1
+        },
+        {
+            "method": True,
             "name": "nvim_buf_set_var",
             "return_type": "void",
             "parameters": [

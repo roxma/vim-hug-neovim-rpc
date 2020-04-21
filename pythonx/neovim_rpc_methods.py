@@ -23,6 +23,10 @@ def nvim_buf_get_number(buf):
     return buf.number
 
 
+def nvim_buf_get_mark(buffer, name):
+    return buffer.mark(name)
+
+
 def nvim_buf_get_name(buffer):
     return buffer.name
 
