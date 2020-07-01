@@ -115,6 +115,10 @@ def nvim_get_current_win():
     return vim.current.window
 
 
+def nvim_list_wins():
+    return list(vim.windows)
+
+
 def nvim_win_get_cursor(window):
     return window.cursor
 
