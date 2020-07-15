@@ -399,6 +399,9 @@ def process_pending_requests():
                     # error uccor
                     err = [1, str(ex)]
                     result = None
+                except KeyboardInterrupt:
+                    err = [1, "Keyboard interrupt"]
+                    result = None
 
                 result = [1, req_id, err, result]
                 logger.info("sending result: %s", result)
@@ -413,6 +416,8 @@ def process_pending_requests():
                     logger.info('notification process result: [%s]', result)
                 except Exception as ex:
                     logger.exception("process failed: %s", ex)
+                except KeyboardInterrupt:
+                    pass
 
         except QueueEmpty:
             pass
