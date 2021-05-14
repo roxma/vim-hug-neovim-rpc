@@ -29,6 +29,8 @@ open a PR if you get any idea on improving it**.
     - [pynvim](https://github.com/neovim/pynvim)
     - Pynvim is normally installed by `:py3 import pip; pip.main(['install',
         '--user', 'pynvim'])` or `python3 -m pip install pynvim`.
+        If you are a win32 user, be careful that your python install and your
+        vim install should both the same architecture (both 64bit or both 32).
     - There should be no error for at least one of `:python3 import pynvim` and
         `:python3 import neovim`
 5. Else if `has('python')`
